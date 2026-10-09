@@ -1,0 +1,1775 @@
+<!doctype html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AUCHURUS ULTRA V9.5 · CONVERSACIÓN NATURAL</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,sans-serif;color:#fff;overflow:hidden}
+.app{--lvl:0;--c:#5bb3ff;min-height:100vh;display:grid;place-items:center;position:relative;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.app.listening{--c:#4ade80}.app.processing{--c:#fbbf24}.app.speaking{--c:#ff6b6b}.app.error{--c:#f87171}
+.bg{position:fixed;inset:0;z-index:-1;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--c) 35%,#0f1b3d),#0a0f24 70%);transition:background .6s}
+main{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:12px;max-width:520px;width:100%;max-height:100vh;overflow-y:auto;padding-top:56px}
+.stage{position:relative;width:min(280px,70vw,36vh);aspect-ratio:1;display:grid;place-items:center}
+.char{all:unset;cursor:pointer;width:100%;filter:drop-shadow(0 18px 30px #0008);position:relative;z-index:2}
+.avatar{width:100%;animation:bob 3.5s ease-in-out infinite}
+.speaking .avatar{animation:none;transform:scale(calc(1 + var(--lvl)*.06)) rotate(calc(var(--lvl)*2deg - 1deg))}
+.ring{position:absolute;inset:0;border-radius:50%;border:3px solid var(--c);opacity:0}
+.listening .ring{animation:ripple 2.4s infinite}
+.ring:nth-child(2){animation-delay:.8s}.ring:nth-child(3){animation-delay:1.6s}
+.speaking .ring{opacity:.35;transform:scale(calc(1.05 + var(--lvl)*.35))}
+.speaking .ring:nth-child(2){transform:scale(calc(1.2 + var(--lvl)*.3))}
+.speaking .ring:nth-child(3){transform:scale(calc(1.35 + var(--lvl)*.25))}
+.orbit{position:absolute;inset:-6%;display:none;animation:spin 1.6s linear infinite}
+.processing .orbit{display:block}
+.orbit b{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--c);box-shadow:0 0 14px var(--c)}
+.orbit b:nth-child(1){top:0;left:50%}.orbit b:nth-child(2){bottom:14%;left:8%}.orbit b:nth-child(3){bottom:14%;right:8%}
+.spin{animation:spin 8s linear infinite}.spin.rev{animation-direction:reverse}
+.speaking .spin{animation-duration:1.5s}
+.eyes{transform-box:fill-box;transform-origin:center;animation:blink 4.5s infinite}
+.pupils{transition:transform .4s}.listening .pupils{transform:translateY(-6px)}
+.mouth{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(.6);transition:transform .1s}
+.speaking .mouth{transform:scaleY(calc(.35 + var(--lvl)*.8))}.listening .mouth{transform:scaleY(.45)}
+h1{font-size:1.8rem}.hint{opacity:.6;font-size:.95rem}.sub{opacity:.9}
+.live{min-height:1.2em;opacity:.8;font-style:italic}
+.log{display:grid;gap:6px;width:100%;max-height:150px;overflow:auto;font-size:.95rem}
+.log p{padding:8px 14px;border-radius:16px;max-width:88%;animation:pop .25s}
+.log .you{justify-self:end;background:#ffffff2e}
+.log .bot{justify-self:start;background:color-mix(in srgb,var(--c) 35%,#0000)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.chips button{border:1px solid #ffffff44;background:#ffffff14;color:#fff;border-radius:16px;padding:7px 12px;cursor:pointer}
+#fx{position:fixed;inset:0;z-index:-1;pointer-events:none}
+.cheek{transform-box:fill-box;transform-origin:center}
+.speaking .cheek{animation:pulse .5s infinite alternate}
+.speaking[data-mood=wow] .pupils{transform:scale(1.2);transform-origin:205px 188px}
+.processing .pupils{transform:translate(8px,-8px)}
+.listening .avatar{transform:scale(calc(1 + var(--lvl)*.05))}
+.avatar{filter:hue-rotate(var(--hue,0deg))}
+.zzz{position:absolute;top:0;right:8%;font-size:2rem;opacity:0;transition:.5s;z-index:3;animation:bob 2s infinite}
+.sleep .zzz{opacity:1}
+.sleep .eyes{animation:none;transform:scaleY(.1)}.sleep .avatar{animation-duration:7s}
+.fl{position:absolute;bottom:40%;font-size:1.8rem;animation:fly 2.2s ease-out forwards;z-index:4;pointer-events:none}
+@keyframes fly{to{transform:translateY(-140px);opacity:0}}
+.brand{position:fixed;top:20px;left:50%;transform:translateX(-50%);font-size:.72rem;letter-spacing:.14em;opacity:.85;z-index:4;white-space:nowrap}.brand b{color:#ffd400}
+#mst{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-size:.78rem;padding:5px 12px;border-radius:14px;background:#0008;z-index:5;max-width:94vw;text-align:center}
+#mst.on{background:#7f1d1dd9}
+.gear.memb{right:66px}
+.mi{display:flex;gap:6px;align-items:center;justify-content:space-between;background:#ffffff14;padding:6px 10px;border-radius:10px}
+.mi span{flex:1;outline:none}.mi button{background:none;border:0;cursor:pointer;color:#fff}
+[data-mood=sad] .mouth{transform:scaleY(-.4)}[data-mood=sad] .pupils{transform:translateY(6px)}[data-mood=sad] .cheek{opacity:.35}
+.wide .pupils{transform:scale(1.35);transform-origin:205px 188px}
+.wide .eyes{animation:none;transform:scaleY(1.15)}
+@media(max-width:560px){.brand{display:none}}
+@keyframes pulse{to{transform:scale(1.15)}}@keyframes pop{from{opacity:0;transform:translateY(6px)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+.controls{display:flex;gap:12px;align-items:center}
+.mic{width:70px;height:70px;border-radius:50%;border:0;font-size:1.8rem;cursor:pointer;background:var(--c);box-shadow:0 0 calc(18px + var(--lvl)*30px) var(--c);transition:opacity .2s}
+button.pill,.stop{border:0;border-radius:20px;padding:9px 16px;font-weight:600;cursor:pointer;background:#ffffff22;color:#fff}
+form{display:flex;gap:6px;width:100%}form input{flex:1;padding:9px 14px;border-radius:20px;border:0;background:#ffffff18;color:#fff}
+form input::placeholder,form textarea::placeholder{color:#ffffff88}
+.gear,.dl{position:fixed;top:12px;background:#ffffff22;border:0;border-radius:20px;height:40px;padding:0 14px;color:#fff;cursor:pointer;z-index:5}
+.gear{right:12px}.dl{left:12px}
+.settings{position:fixed;top:60px;right:12px;width:260px;padding:14px;display:grid;gap:10px;border-radius:16px;background:#0d1530f2;z-index:5;font-size:.9rem;max-height:80vh;overflow:auto}
+.settings label{display:grid;gap:4px}.settings .row{display:flex;gap:8px;align-items:center}
+.settings select,.settings input[type=text]{background:#ffffff18;color:#fff;border:1px solid #ffffff33;border-radius:8px;padding:4px 8px}
+[hidden]{display:none!important}
+#dbg{position:fixed;bottom:40px;left:8px;width:min(340px,96vw);background:#000d;border:1px solid #444;border-radius:10px;padding:10px;font-size:.68rem;font-family:monospace;z-index:99;max-height:48vh;overflow-y:auto;line-height:1.6}
+#dbg h3{color:#ffd400;margin-bottom:4px}
+#dbg .dr{display:flex;justify-content:space-between;gap:6px;border-bottom:1px solid #ffffff11;padding:2px 0}
+#dbg .dl2{color:#999}#dbg .dv{color:#fff;text-align:right;word-break:break-all;max-width:60%}
+#dbg .de{color:#f87171}
+#testbar{position:fixed;top:60px;left:8px;background:#0d1530f2;border-radius:10px;padding:8px;display:flex;gap:5px;flex-wrap:wrap;z-index:6}
+#testbar b{color:#ffd400;font-size:.72rem;align-self:center}
+#testbar button{font-size:.68rem;padding:3px 7px;border:1px solid #ffffff44;background:#ffffff14;color:#fff;border-radius:7px;cursor:pointer}
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes bob{50%{transform:translateY(-8px)}}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@keyframes ripple{from{transform:scale(.85);opacity:.7}to{transform:scale(1.35);opacity:0}}
+:root{color-scheme:dark}
+
+/* ─── ULTRA: robustez visual, accesibilidad y móvil ─── */
+html{min-height:100%;background:#0a0f24;scroll-behavior:smooth}
+body{min-height:100dvh;overflow-x:hidden;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,0px)}
+.app{min-height:100dvh;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+main{max-height:100dvh;padding-bottom:calc(74px + env(safe-area-inset-bottom,0px));overscroll-behavior:contain}
+button,input,select,textarea{font:inherit}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+button:disabled{opacity:.5;cursor:not-allowed}
+form input,form textarea{min-width:0}
+#f{align-items:center}
+#f textarea{flex:1;min-width:0;min-height:42px;max-height:112px;resize:none;overflow-y:auto;padding:10px 14px;border:0;border-radius:18px;background:transparent;color:#fff;font-size:1rem;line-height:1.35;outline:none}
+#f textarea:focus-visible{outline:2px solid #93c5fd;outline-offset:1px}
+.replytools{display:flex;justify-content:center;align-items:center;gap:7px;flex-wrap:wrap;width:100%;font-size:.78rem}
+.replytools .pill{font-size:.78rem;padding:7px 11px}
+#replyfeedback{opacity:.8;min-height:1em}
+@media(max-width:380px){#f textarea{padding:9px 10px;font-size:.93rem}#sendbtn{padding:8px 10px}.replytools .pill{font-size:.72rem}}
+#mst{bottom:max(10px,env(safe-area-inset-bottom,0px));pointer-events:none}
+.settings{width:min(320px,calc(100vw - 24px));right:max(12px,env(safe-area-inset-right,0px));max-height:calc(100dvh - 76px);overscroll-behavior:contain}
+#testbar{max-width:calc(100vw - 16px);max-height:35dvh;overflow:auto}
+.log p{overflow-wrap:anywhere;white-space:pre-wrap}
+@media(max-width:560px){
+  .brand{display:block;top:16px;font-size:.62rem;letter-spacing:.09em}
+  .dl,.gear{top:54px;height:38px;padding:0 11px}
+  .dl{left:10px}.gear{right:10px}.gear.memb{right:58px}
+  main{padding-top:98px;gap:9px}
+  .stage{width:min(250px,66vw,30dvh)}
+  h1{font-size:1.55rem}
+  .hint,.sub{max-width:92vw}
+  .controls{gap:10px}
+  .mic{width:64px;height:64px}
+  .log{max-height:22dvh}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.avatar{animation:none!important}}
+
+
+/* AUCHURUS ULTRA — capa premium */
+.brand{display:flex;align-items:center;gap:7px;letter-spacing:.10em;font-weight:800;text-shadow:0 0 18px #4aa3ff55}
+.brand b{color:#8bd5ff;background:linear-gradient(90deg,#c4f1ff,#5bb3ff,#d8c4ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.brand small{letter-spacing:.04em;text-transform:none;font-weight:600;opacity:.72;margin-left:5px}
+.brand-mouse{font-size:1.15rem;filter:drop-shadow(0 0 7px #5bb3ff88)}
+.ultra-foot{font-size:.62rem;letter-spacing:.08em;opacity:.62}.ultra-foot span{color:#9ddcff;font-weight:700}
+.ultra-tag{font-size:.65rem;letter-spacing:.18em;color:#9ddcff;border:1px solid #7dd3fc55;border-radius:20px;padding:5px 12px;background:#0c234c99;box-shadow:0 0 24px #1d7ee622}
+#f{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(520px,calc(100vw - 24px));z-index:30;padding:6px;border:1px solid #ffffff2c;border-radius:28px;background:#07132ccc;box-shadow:0 10px 35px #0004;backdrop-filter:blur(14px)}
+#f input,#f textarea{background:transparent;min-height:42px;font-size:1rem;outline:none}
+#f button{background:linear-gradient(135deg,#60a5fa,#2563eb);box-shadow:0 4px 18px #2563eb55;white-space:nowrap}
+.mic{border:2px solid #ffffff55!important;background:linear-gradient(145deg,#8bd5ff,#3678ff)!important;color:#07132c;box-shadow:0 0 28px #429bff55!important}
+.log{scrollbar-width:thin;scrollbar-color:#4c85c5 transparent}
+.log .bot{border:1px solid #8bd5ff22;box-shadow:0 4px 16px #0002}
+.log .you{border:1px solid #ffffff20}
+.chips button{transition:transform .15s,border-color .15s,background .15s}
+.chips button:hover{transform:translateY(-2px);border-color:#8bd5ff;background:#5bb3ff2a}
+.pill{transition:transform .15s,filter .15s}.pill:active{transform:scale(.97)}
+@media(max-width:560px){
+  .brand{flex-wrap:wrap;justify-content:center;max-width:95vw;white-space:normal;font-size:.58rem;gap:4px}
+  .brand small{width:100%;text-align:center;margin:0}.brand-mouse{font-size:1rem}.ultra-tag{font-size:.58rem}
+  .dl,.gear{top:54px;height:38px;padding:0 11px}.dl{left:10px}.gear{right:10px}.gear.memb{right:58px}
+  main{padding-top:110px;padding-bottom:10px;gap:5px}
+  .stage{width:min(170px,48vw,22dvh)}
+  h1{font-size:1.42rem}.sub{font-size:.88rem}#hinttxt,.ultra-foot{display:none}
+  .live{font-size:.8rem;min-height:.9em}
+  .log{max-height:14dvh;font-size:.86rem;gap:4px}.log p{padding:6px 10px}
+  .chips{gap:4px}.chips button{font-size:.76rem;padding:5px 8px}
+  .controls{gap:8px}.mic{width:54px;height:54px;font-size:1.5rem}
+  #allow{font-size:.78rem;padding:7px 10px}
+  #f{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:calc(100vw - 20px);max-width:520px;margin:0;gap:3px;z-index:30}
+  #f textarea{max-height:84px;min-height:40px;padding:9px 10px;font-size:.94rem}
+  #sendbtn{padding:8px 11px}
+  #mst,#allow{display:none!important}
+  .settings{top:102px}
+}
+</style>
+</head><body>
+<div class="app idle">
+<div class="brand"><span class="brand-mouse"></span> BEST AUCHURUS <b>ULTRA · PUNTO ULTRA</b><small>by creador Kenito</small></div>
+<div id="mst"></div>
+<div class="bg"></div>
+<canvas id="fx"></canvas>
+<button class="dl" id="dlbtn">&#11015; Descargar HTML</button>
+<button class="gear" id="gear" aria-label="Configuración" title="Configuración">&#9881;&#65039;</button>
+<button class="gear memb" id="memb" aria-label="Memoria" title="Memoria">&#129504; Memoria</button>
+
+<div id="dbg" hidden>
+  <h3>&#128027; DEBUG ULTRA</h3>
+  <div class="dr"><span class="dl2">Estado</span><span class="dv" id="dv-state">-</span></div>
+  <div class="dr"><span class="dl2">Run ID</span><span class="dv" id="dv-run">-</span></div>
+  <div class="dr"><span class="dl2">Mic stream</span><span class="dv" id="dv-mic">-</span></div>
+  <div class="dr"><span class="dl2">Wake rec</span><span class="dv" id="dv-wake">-</span></div>
+  <div class="dr"><span class="dl2">Barge rec</span><span class="dv" id="dv-barge">-</span></div>
+  <div class="dr"><span class="dl2">Main rec</span><span class="dv" id="dv-rec">-</span></div>
+  <div class="dr"><span class="dl2">TTS</span><span class="dv" id="dv-tts">-</span></div>
+  <div class="dr"><span class="dl2">Memoria</span><span class="dv" id="dv-mem">-</span></div>
+  <div class="dr"><span class="dl2">Red</span><span class="dv" id="dv-net">-</span></div>
+  <div class="dr"><span class="dl2">STT soporte</span><span class="dv" id="dv-stt">-</span></div>
+  <div class="dr"><span class="dl2">Ultimo texto</span><span class="dv" id="dv-txt">-</span></div>
+  <div class="dr"><span class="dl2">Ultima resp</span><span class="dv" id="dv-rep">-</span></div>
+  <div class="dr"><span class="dl2">Transicion</span><span class="dv" id="dv-tr">-</span></div>
+  <div class="dr"><span class="dl2">Error</span><span class="dv de" id="dv-err">-</span></div>
+</div>
+
+<div id="testbar" hidden>
+  <b>TEST</b>
+  <button onclick="testSim('wake')">WAKE</button>
+  <button onclick="testSim('listen')">LISTEN</button>
+  <button onclick="testSim('process')">PROCESS</button>
+  <button onclick="testSim('speak')">SPEAK</button>
+  <button onclick="testSim('error')">ERROR</button>
+  <button onclick="testSim('sleep')">SLEEP</button>
+  <button onclick="testSim('stop')">STOP</button>
+</div>
+
+<main>
+<div class="stage">
+  <i class="ring"></i><i class="ring"></i><i class="ring"></i>
+  <span class="zzz">&#128164;</span>
+  <span class="orbit"><b></b><b></b><b></b></span>
+  <button class="char" id="char" aria-label="Hablar con Auchurus">
+  <svg viewBox="-6 -6 412 352" class="avatar">
+  <g data-ear><circle cx="62" cy="62" r="64" fill="#fff" stroke="#ff3b30" stroke-width="4"/>
+  <circle cx="62" cy="62" r="58" fill="#ffd400"/><circle cx="62" cy="62" r="52" fill="#ff3b30"/>
+  <g class="spin" style="transform-origin:62px 62px"><circle cx="62" cy="62" r="34" fill="none" stroke="#ffd400" stroke-width="34" stroke-dasharray="26.7 26.7"/></g>
+  <circle cx="62" cy="62" r="24" fill="#ffe600" stroke="#ff3b30" stroke-width="3"/></g>
+  <g data-ear><circle cx="338" cy="62" r="64" fill="#fff" stroke="#ff3b30" stroke-width="4"/>
+  <circle cx="338" cy="62" r="58" fill="#ffd400"/><circle cx="338" cy="62" r="52" fill="#ff3b30"/>
+  <g class="spin rev" style="transform-origin:338px 62px"><circle cx="338" cy="62" r="40" fill="none" stroke="#ffd400" stroke-width="11" stroke-linecap="round" stroke-dasharray="0 20.9"/></g>
+  <circle cx="338" cy="62" r="26" fill="#ffe600" stroke="#ff3b30" stroke-width="3"/></g>
+  <circle cx="200" cy="205" r="130" fill="#ffd400" stroke="#ff3b30" stroke-width="4"/>
+  <circle cx="200" cy="205" r="122" fill="#8ec5f5" stroke="#ff3b30" stroke-width="5"/>
+  <ellipse cx="200" cy="86" rx="30" ry="13" fill="#ff3b30" stroke="#ff8a80" stroke-width="3"/>
+  <ellipse cx="200" cy="324" rx="30" ry="13" fill="#ff3b30" stroke="#ff8a80" stroke-width="3"/>
+  <ellipse cx="80" cy="205" rx="13" ry="30" fill="#ff3b30" stroke="#ff8a80" stroke-width="3"/>
+  <ellipse cx="320" cy="205" rx="13" ry="30" fill="#ff3b30" stroke="#ff8a80" stroke-width="3"/>
+  <circle cx="130" cy="150" r="20" fill="#d9a7b5" opacity=".7"/>
+  <circle class="cheek" cx="125" cy="248" r="30" fill="#e88a8a"/>
+  <circle class="cheek" cx="278" cy="240" r="24" fill="#e88a8a"/>
+  <g class="eyes">
+    <ellipse cx="162" cy="186" rx="36" ry="40" fill="#fffcd0"/>
+    <ellipse cx="248" cy="186" rx="36" ry="40" fill="#fffcd0"/>
+    <g class="pupils">
+      <circle cx="162" cy="188" r="18" fill="#1a7fdc"/><circle cx="168" cy="181" r="5" fill="#5bb3ff"/>
+      <circle cx="248" cy="188" r="18" fill="#1a7fdc"/><circle cx="254" cy="181" r="5" fill="#5bb3ff"/>
+    </g>
+  </g>
+  <path class="mouth" d="M148 246Q200 258 256 244Q244 304 202 304Q160 304 148 246Z" fill="#d9665f"/>
+  <g id="accg"></g>
+  </svg>
+  </button>
+</div>
+<div class="ultra-tag">✦ EDICIÓN ULTRA V9 ✦ · NÚCLEO LOCAL</div>
+<h1 id="h1txt"></h1>
+<p class="sub" id="subtxt"></p>
+<p class="hint" id="hinttxt"></p>
+<p class="live" id="live"></p>
+<p class="hint ultra-foot">⚡ AUCHURUS ULTRA V9.5 · CONVERSACIÓN NATURAL <span>by creador Kenito</span></p>
+<div class="log" id="log" role="log" aria-live="polite" aria-relevant="additions"></div>
+<div class="replytools" id="replytools" hidden>
+  <button type="button" class="pill" id="copyreply">📋 Copiar respuesta</button>
+  <button type="button" class="pill" id="retryreply">↻ Repetir pregunta</button>
+  <span id="replyfeedback" role="status" aria-live="polite"></span>
+</div>
+<div class="chips" id="chips"></div>
+<div class="controls">
+  <button class="mic" id="mic" aria-label="Iniciar o detener conversación" title="Iniciar o detener conversación">&#127908;</button>
+  <button class="stop pill" id="stop" hidden>Detener</button>
+</div>
+<button class="pill" id="allow" type="button">&#127899;&#65039; Activar micrófono</button>
+<form id="f" autocomplete="off">
+  <textarea id="txt" aria-label="Escribe tu mensaje" maxlength="2000" placeholder="Escribe tu pregunta…" autocomplete="off" spellcheck="false" rows="1"></textarea>
+  <button class="pill" id="sendbtn" type="submit">Enviar</button>
+</form>
+</main>
+
+<aside class="settings" id="set" hidden>
+  <label>Idioma<select id="lang"><option value="es-ES">Espanol</option><option value="en-US">English</option></select></label>
+  <label>Velocidad<input id="speed" type="range" min=".7" max="1.5" step=".1" value="1.1"></label>
+  <label>Volumen<input id="vol" type="range" min="0" max="1" step=".05" value="1"></label>
+  <label class="row"><input id="cont" type="checkbox"> Modo conversacion continua</label>
+  <label class="row"><input id="onlineopt" type="checkbox"> Consultas en Internet (opcional)</label>
+  <small style="opacity:.75">Al activarlo, AUCHURUS intenta consultar Wikipedia para resumir información y, si no encuentra resultados, puede abrir una búsqueda web. Requiere Internet.</small>
+  <hr style="border-color:#ffffff22">
+  <b>IA externa (opcional)</b>
+  <label>URL de tu backend seguro<input id="aiendpoint" type="url" placeholder="https://tu-servidor.com/api/chat" autocomplete="url"></label>
+  <small style="opacity:.75">Para activar respuestas con IA real, despliega el backend incluido en el paquete y pega aquí su URL HTTPS. La clave va en el servidor, nunca en este HTML. Si queda vacío, Auchurus usa el núcleo local.</small>
+  <button class="pill" id="aitest" type="button">Probar conexión de IA</button>
+  <small id="aistatus" role="status">IA externa: núcleo local activo.</small>
+  <label>Voz<select id="voice"></select></label>
+  <label>Personalidad<select id="pers">
+    <option value="alegre">Alegre</option>
+    <option value="gracioso">Bromista</option>
+    <option value="profe">Profe</option>
+    <option value="calmado">Calmado</option>
+  </select></label>
+  <label>Nombre<input id="name" type="text" value="Auchurus"></label>
+  <label>Tono<input id="pitch" type="range" min=".5" max="2" step=".1" value="1.5"></label>
+  <label>Color<input id="hue" type="range" min="0" max="360" value="0"></label>
+  <label>Accesorio<select id="acc">
+    <option value="none">Ninguno</option>
+    <option value="hat">Gorro</option>
+    <option value="glasses">Lentes</option>
+    <option value="bow">Mono</option>
+    <option value="crown">Corona</option>
+  </select></label>
+  <label class="row"><input id="wake" type="checkbox"> Palabra de activacion ("Auchurus")</label>
+  <label class="row"><input id="barge" type="checkbox" checked> Interrumpir con la voz</label>
+  <label>Pausa de silencio (<span id="silv">1400</span>ms)
+    <input id="sil" type="range" min="500" max="3000" step="100" value="1400">
+  </label>
+  <label class="row"><input id="snd" type="checkbox" checked> Sonidos</label>
+  <button class="pill" id="testvoice">&#128266; Probar voz</button>
+  <button class="pill" id="exp">&#128190; Exportar chat</button>
+  <button class="pill" id="clr">&#128465;&#65039; Limpiar chat</button>
+  <hr style="border-color:#ffffff22">
+  <button class="pill" id="dbgtoggle">&#128027; Debug Mode</button>
+  <button class="pill" id="testtoggle">&#129514; Test Mode</button>
+</aside>
+
+<aside class="settings" id="mem" hidden>
+  <b>&#129504; Recuerdo que...</b>
+  <div id="memlist" style="display:grid;gap:6px;margin-top:8px"></div>
+  <form id="memf" style="display:flex;gap:6px;margin-top:8px">
+    <input id="memi" placeholder="Nuevo recuerdo" style="flex:1;padding:6px 10px;border-radius:10px;border:0;background:#ffffff18;color:#fff">
+    <button class="pill" type="submit">+</button>
+  </form>
+  <button class="pill" id="memclr" style="margin-top:6px">Borrar toda la memoria</button>
+</aside>
+
+</div><!-- .app -->
+<script>
+(function(){
+'use strict';
+
+// ─── SNAPSHOT DEL HTML FUENTE para descarga ───────────────────────────────
+// Se captura antes de que el DOM cambie, garantizando descarga fiel.
+var _HTML_SNAPSHOT = '<!doctype html>' + document.documentElement.outerHTML;
+
+// ─── UTILIDADES BASICAS ───────────────────────────────────────────────────
+var q = function(s){ return document.querySelector(s); };
+var app = q('.app');
+
+// ─── CONSTANTES ──────────────────────────────────────────────────────────
+var NAME_DEFAULT = 'Auchurus';
+var SYSTEM = 'Eres un pequeno ayudante robotico amigable, alegre, curioso y servicial. Hablas por voz: responde natural y breve (1-2 frases), sin listas, markdown ni emojis, en el mismo idioma del usuario (espanol o ingles). Recuerda lo que el usuario dice en la conversacion.';
+var PERS_MAP = {
+  alegre:'Personalidad: muy alegre y curioso.',
+  gracioso:'Personalidad: bromista; haces chistes cortos y juegos de palabras.',
+  profe:'Personalidad: profe paciente que explica con ejemplos simples.',
+  calmado:'Personalidad: tranquilo, calido y relajante.'
+};
+var CHIPS = ['Que puedes hacer?','Cuentame un dato curioso','Cuentame un chiste','Enseame una palabra en ingles'];
+var JOKES = ['Que hace una abeja en el gimnasio? Zum-ba!','Por que los pajaros vuelan al sur? Porque caminando tardarian mucho.','Que le dice un 0 a un 8? Bonito cinturon!'];
+var FACTS = ['Los pulpos tienen tres corazones.','La miel nunca se echa a perder.','Las nutrias se toman de la mano al dormir para no separarse.'];
+var STOP_WORDS = /\b(espera|para|alto|basta|calla|callate|stop|wait|hold on)\b/i;
+var COL = {idle:'#5bb3ff',listening:'#4ade80',processing:'#fbbf24',speaking:'#ff6b6b',error:'#f87171'};
+var STATUS_UI = {
+  idle:    {h:'Hola! 👋', s:'Estoy listo para ayudarte.', t:'Pulsa el microfono o usa la palabra de activacion'},
+  listening:{h:'Te escucho...', s:'', t:''},
+  processing:{h:'Estoy pensando...', s:'', t:''},
+  speaking:{h:'Aqui estoy!', s:'', t:''},
+  error:   {h:'Ups...', s:'', t:'Intentemoslo otra vez'}
+};
+var ACC_SVG = {
+  none:'',
+  hat:'<path d="M150 100L200 12L250 100Z" fill="#a855f7" stroke="#fff" stroke-width="4"/><circle cx="200" cy="10" r="9" fill="#fde047"/>',
+  glasses:'<g fill="none" stroke="#111" stroke-width="6"><circle cx="162" cy="186" r="40"/><circle cx="248" cy="186" r="40"/><path d="M202 186h6"/></g>',
+  bow:'<path d="M200 322L160 300V345ZM200 322L240 300V345Z" fill="#ec4899"/><circle cx="200" cy="322" r="9" fill="#be185d"/>',
+  crown:'<path d="M145 98L155 40L180 75L200 30L220 75L245 40L255 98Z" fill="#facc15" stroke="#b45309" stroke-width="4"/>'
+};
+
+// ─── ESTADO GLOBAL ────────────────────────────────────────────────────────
+var appState = 'idle';
+var runId = 0;
+var curLvl = 0;
+var history = [];
+var summary = '';
+var userSad = false;
+try { summary = localStorage.getItem('sum') || ''; } catch(e) {}
+
+// ─── GETTERS DE CONFIG ────────────────────────────────────────────────────
+function cfg() {
+  return {
+    lang:  q('#lang').value,
+    speed: parseFloat(q('#speed').value),
+    pitch: parseFloat(q('#pitch').value),
+    vol:   parseFloat(q('#vol').value),
+    cont:  q('#cont').checked,
+    voice: q('#voice').value,
+    silMs: parseInt(q('#sil').value, 10),
+    barge: q('#barge').checked,
+    wake:  q('#wake').checked,
+    snd:   q('#snd').checked
+  };
+}
+function aName() { return (q('#name').value || '').trim() || NAME_DEFAULT; }
+function isbusy() { return appState !== 'idle' && appState !== 'error'; }
+
+// ─── DEBUG ────────────────────────────────────────────────────────────────
+function dv(id, val) {
+  var el = q('#dv-' + id);
+  if (el) el.textContent = String(val);
+}
+function dbgErr(msg) { dv('err', msg || '-'); }
+function dbgRefresh() {
+  dv('state', appState);
+  dv('run', runId);
+  dv('mic', MIC.hasStream ? 'activo' : 'inactivo');
+  dv('wake', STT.wakeOn ? 'activo' : 'inactivo');
+  dv('barge', STT.bargeOn ? 'activo' : 'inactivo');
+  dv('rec', STT.mainOn ? 'activo' : 'inactivo');
+  dv('tts', TTS.on ? 'hablando (' + TTS.pending + ' pend.)' : 'silencioso');
+  dv('mem', MEM.list.length + ' recuerdos');
+  dv('net', navigator.onLine ? 'online' : 'offline');
+  dv('stt', STT_CTOR() ? 'soportado' : 'NO soportado');
+  dv('tr', _lastTrans);
+}
+var _lastTrans = '';
+setInterval(dbgRefresh, 600);
+
+// ─── LEVEL VISUAL ─────────────────────────────────────────────────────────
+function setLvl(v) {
+  curLvl = v;
+  app.style.setProperty('--lvl', v);
+}
+
+// ─── SLEEP MANAGER ────────────────────────────────────────────────────────
+var SLEEP = (function(){
+  var t = null;
+  function schedule() {
+    clearTimeout(t);
+    t = setTimeout(function(){ if (appState === 'idle') app.classList.add('sleep'); }, 45000);
+  }
+  return {
+    onState: function(s) {
+      if (s === 'idle') { schedule(); }
+      else { clearTimeout(t); app.classList.remove('sleep'); }
+    },
+    wake: function() {
+      app.classList.remove('sleep');
+      schedule();
+    }
+  };
+})();
+
+// ─── MIC MANAGER ─────────────────────────────────────────────────────────
+var MIC = (function(){
+  var stream = null, raf = null, ac = null;
+  return {
+    get hasStream() { return !!(stream && stream.active); },
+    ensurePerm: function() {
+      return new Promise(function(res, rej) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          return rej(new Error('mic-blocked'));
+        }
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(function(st) {
+          st.getTracks().forEach(function(t){ t.stop(); });
+          res();
+        }).catch(function(e) {
+          rej(new Error(e.name === 'NotFoundError' ? 'audio-capture' : 'not-allowed'));
+        });
+      });
+    },
+    startMeter: function() {
+      if (raf) return; // ya corriendo
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(st) {
+        stream = st;
+        ac = new AudioContext();
+        var an = ac.createAnalyser();
+        an.fftSize = 256;
+        ac.createMediaStreamSource(st).connect(an);
+        var buf = new Uint8Array(an.fftSize);
+        var loop = function() {
+          an.getByteTimeDomainData(buf);
+          var x = 0;
+          for (var i = 0; i < buf.length; i++) { x += ((buf[i] - 128) / 128) * ((buf[i] - 128) / 128); }
+          setLvl(Math.min(1, Math.sqrt(x / buf.length) * 6));
+          raf = requestAnimationFrame(loop);
+        };
+        loop();
+      }).catch(function(e) { /* silencioso */ });
+    },
+    stopMeter: function() {
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      if (stream) { stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+      if (ac) { try { ac.close(); } catch(e) {} ac = null; }
+      setLvl(0);
+    }
+  };
+})();
+
+// ─── TTS MANAGER ─────────────────────────────────────────────────────────
+var TTS = (function(){
+  var cancelId = 0, lvlTimer = null, activeResolve = null;
+  var pub = { on: false, pending: 0 };
+  pub.cancel = function() {
+    cancelId++;
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch(e) {}
+    clearInterval(lvlTimer);
+    pub.on = false; pub.pending = 0; setLvl(0);
+    if (activeResolve) { var finish = activeResolve; activeResolve = null; finish(); }
+  };
+  pub.speak = function(text) {
+    pub.cancel();
+    return new Promise(function(resolve) {
+      var myId = cancelId, settled = false, done = 0, parts = [], timeout = null;
+      function finish() {
+        if (settled) return;
+        settled = true; clearTimeout(timeout); clearInterval(lvlTimer);
+        if (activeResolve === finish) activeResolve = null;
+        pub.on = false; pub.pending = 0; setLvl(0); resolve();
+      }
+      activeResolve = finish;
+      try {
+        if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') { finish(); return; }
+        var c = cfg();
+        var raw = String(text || '').match(/[^.!?¡¿]+[.!?]*/g) || [String(text || '')];
+        parts = raw.filter(function(p){ return p.trim().length > 0; });
+        if (!parts.length) { finish(); return; }
+        var allVoices = speechSynthesis.getVoices();
+        var v = allVoices.find(function(vv){ return vv.name === c.voice; });
+        if (!v) { var pfx = c.lang.slice(0, 2); v = allVoices.find(function(vv){ return (vv.lang || '').toLowerCase().startsWith(pfx); }); }
+        pub.pending = parts.length; pub.on = true;
+        lvlTimer = setInterval(function(){ setLvl(0.3 + Math.random() * 0.7); }, 110);
+        // El texto ya está visible; esto solo impide que un motor de voz colgado bloquee el estado.
+        timeout = setTimeout(finish, 15000);
+        parts.forEach(function(part) {
+          try {
+            var u = new SpeechSynthesisUtterance(part.trim());
+            u.lang = c.lang; u.rate = c.speed; u.pitch = c.pitch; u.volume = c.vol;
+            if (v) u.voice = v;
+            function completed() {
+              if (myId !== cancelId || settled) return;
+              pub.pending = Math.max(0, pub.pending - 1); done++;
+              if (done >= parts.length) finish();
+            }
+            u.onend = completed; u.onerror = completed;
+            speechSynthesis.speak(u);
+          } catch(e) { done++; if (done >= parts.length) finish(); }
+        });
+      } catch(e) { finish(); }
+    });
+  };
+  return pub;
+})();
+
+// ─── STT CONSTRUCTOR ─────────────────────────────────────────────────────
+function STT_CTOR() { return window.SpeechRecognition || window.webkitSpeechRecognition; }
+
+// ─── STT MANAGER ─────────────────────────────────────────────────────────
+var STT = (function(){
+  var main = null, wake = null, barge = null, bargeHit = false;
+  var pub = {};
+  Object.defineProperty(pub, 'mainOn',  { get: function(){ return !!main; } });
+  Object.defineProperty(pub, 'wakeOn',  { get: function(){ return !!wake; } });
+  Object.defineProperty(pub, 'bargeOn', { get: function(){ return !!barge; } });
+
+  // MAIN LISTEN
+  pub.listen = function(lang) {
+    return new Promise(function(res, rej) {
+      var SR = STT_CTOR();
+      if (!SR) return rej(new Error('nostt'));
+      if (main) { try { main.abort(); } catch(e) {} main = null; }
+      var r = main = new SR();
+      r.lang = lang; r.interimResults = true; r.continuous = true;
+      var got = '', fail = false, silTimer = 0, idleTimer = 0;
+      idleTimer = setTimeout(function() {
+        if (!got) { try { r.stop(); } catch(e) {} }
+      }, 9000);
+      function resetSil() {
+        clearTimeout(silTimer);
+        silTimer = setTimeout(function() {
+          try { r.stop(); } catch(e) {}
+        }, cfg().silMs);
+      }
+      r.onresult = function(ev) {
+        var t = '';
+        for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
+        got = t;
+        q('#live').textContent = t;
+        dv('txt', t.slice(0, 50));
+        resetSil();
+      };
+      r.onerror = function(ev) {
+        fail = true;
+        clearTimeout(silTimer); clearTimeout(idleTimer);
+        dbgErr('STT: ' + ev.error);
+        rej(new Error(ev.error));
+      };
+      r.onend = function() {
+        clearTimeout(silTimer); clearTimeout(idleTimer);
+        main = null;
+        badge();
+        if (!fail) {
+          if (got) res(got);
+          else rej(new Error('no-speech'));
+        }
+      };
+      try { r.start(); badge(); } catch(e) { main = null; rej(e); }
+    });
+  };
+  pub.abortMain = function() {
+    var r = main; main = null;
+    try { if (r) r.abort(); } catch(e) {}
+    badge();
+  };
+
+  // WAKE WORD
+  pub.startWake = function() {
+    if (!cfg().wake || !STT_CTOR() || wake || main || appState !== 'idle') return;
+    try {
+      var SR = STT_CTOR();
+      var r = wake = new SR();
+      r.lang = cfg().lang; r.continuous = true; r.interimResults = true;
+      r.onresult = function(ev) {
+        var t = ev.results[ev.results.length - 1][0].transcript;
+        if (wakeMatch(t)) onWake(t);
+      };
+      r.onerror = function(ev) {
+        if (/not-allowed|service-not-allowed|audio-capture/.test(ev.error)) {
+          q('#wake').checked = false; wake = null; badge();
+        }
+      };
+      r.onend = function() {
+        if (wake === r) {
+          wake = null;
+          if (appState === 'idle' && cfg().wake) {
+            setTimeout(function(){ pub.startWake(); }, 500);
+          }
+        }
+        badge();
+      };
+      r.start(); badge();
+    } catch(e) { wake = null; badge(); }
+  };
+  pub.stopWake = function() {
+    var r = wake; wake = null;
+    try { if (r) r.abort(); } catch(e) {}
+    badge();
+  };
+
+  // BARGE-IN
+  pub.startBarge = function() {
+    if (!cfg().barge || !STT_CTOR() || barge) return;
+    var spokenLast = (history.length ? history[history.length - 1].content : '').toLowerCase();
+    try {
+      var SR = STT_CTOR();
+      var r = barge = new SR();
+      r.lang = cfg().lang; r.interimResults = true;
+      var got = '';
+      r.onresult = function(ev) {
+        var t = '';
+        for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
+        got = t;
+        if (!bargeHit) {
+          var words = t.toLowerCase().split(/\s+/).filter(function(w){ return !!w; });
+          var ov = words.filter(function(w){ return spokenLast.indexOf(w) !== -1; }).length / (words.length || 1);
+          if (STOP_WORDS.test(t) || (words.length >= 2 && ov < 0.6)) {
+            bargeHit = true;
+            runId++;
+            TTS.cancel();
+            setStatus('listening');
+          }
+        }
+        if (bargeHit) q('#live').textContent = t;
+      };
+      r.onerror = function() {};
+      r.onend = function() {
+        if (barge === r) barge = null;
+        badge();
+        if (bargeHit) {
+          bargeHit = false;
+          var t = got.trim();
+          if (!t || (t.split(/\s+/).length <= 2 && STOP_WORDS.test(t))) {
+            setStatus('idle');
+          } else {
+            sendText(t);
+          }
+        } else if (appState === 'speaking') {
+          setTimeout(function(){ pub.startBarge(); }, 200);
+        }
+      };
+      r.start(); badge();
+    } catch(e) {}
+  };
+  pub.stopBarge = function() {
+    var r = barge; barge = null; bargeHit = false;
+    try { if (r) r.abort(); } catch(e) {}
+    badge();
+  };
+  pub.stopAll = function() {
+    pub.abortMain();
+    pub.stopWake();
+    pub.stopBarge();
+  };
+  return pub;
+})();
+
+// ─── WAKE WORD MATCHER ────────────────────────────────────────────────────
+function wakeMatch(text) {
+  var t = String(text || '').toLowerCase().trim();
+  var n = aName().toLowerCase().trim();
+  var variants = [n, 'auchuru', 'auscurus', 'auschurus', 'aucurus', 'auchuruz', 'auchures', 'auchuros'];
+  var escaped = variants.filter(Boolean).map(function(v){
+    return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  });
+  var names = escaped.join('|');
+  if (!names) return false;
+  var re = new RegExp('(?:^|\\b)(?:(?:oye|hey|hola|ok)\\s+)?(?:' + names + ')(?=$|[\\s,!.?])', 'i');
+  var hit = re.test(t);
+  if (hit) dv('txt', 'WAKE: ' + t);
+  return hit;
+}
+
+// ─── BEEP ─────────────────────────────────────────────────────────────────
+var _bAc = null;
+function beep(a, b) {
+  if (!cfg().snd) return;
+  try {
+    if (!_bAc) _bAc = new AudioContext();
+    if (_bAc.state === 'suspended') _bAc.resume();
+    var t = _bAc.currentTime;
+    var o = _bAc.createOscillator();
+    var g = _bAc.createGain();
+    o.type = 'square';
+    o.frequency.setValueAtTime(a, t);
+    o.frequency.exponentialRampToValueAtTime(b, t + 0.12);
+    g.gain.setValueAtTime(0.04, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(g).connect(_bAc.destination);
+    o.start(); o.stop(t + 0.16);
+  } catch(e) {}
+}
+
+// ─── PARTÍCULAS ───────────────────────────────────────────────────────────
+var cv = q('#fx'), cx = cv.getContext('2d');
+var PT = [];
+for (var _i = 0; _i < 45; _i++) {
+  PT.push({x: Math.random(), y: Math.random(), r: 1 + Math.random() * 3, v: 0.0004 + Math.random() * 0.001});
+}
+function rsz() { cv.width = innerWidth; cv.height = innerHeight; }
+rsz();
+addEventListener('resize', rsz);
+if (!matchMedia('(prefers-reduced-motion:reduce)').matches) {
+  (function fx() {
+    cx.clearRect(0, 0, cv.width, cv.height);
+    cx.fillStyle = COL[appState] || COL.idle;
+    cx.globalAlpha = 0.35;
+    var k = appState === 'processing' ? 4 : 1 + curLvl * 6;
+    for (var i = 0; i < PT.length; i++) {
+      var p = PT[i];
+      p.y -= p.v * k;
+      if (p.y < 0) { p.y = 1; p.x = Math.random(); }
+      cx.beginPath();
+      cx.arc(p.x * cv.width, p.y * cv.height, p.r * (1 + curLvl), 0, 7);
+      cx.fill();
+    }
+    requestAnimationFrame(fx);
+  })();
+}
+
+// ─── POP EMOJI ───────────────────────────────────────────────────────────
+function pop(e) {
+  if (!e) return;
+  var x = document.createElement('span');
+  x.textContent = e; x.className = 'fl';
+  x.style.left = (30 + Math.random() * 40) + '%';
+  q('.stage').appendChild(x);
+  setTimeout(function(){ if (x.parentNode) x.parentNode.removeChild(x); }, 2200);
+}
+function ear() {
+  beep(1200, 1800); pop('🎵');
+  document.querySelectorAll('.spin').forEach(function(e){
+    e.style.animationDuration = '.3s';
+    setTimeout(function(){ e.style.animationDuration = ''; }, 900);
+  });
+}
+
+// ─── BADGE ────────────────────────────────────────────────────────────────
+function badge() {
+  var el = q('#mst');
+  if (!el) return;
+  var n = aName();
+  var txt;
+  if (STT.mainOn)   txt = '🔴 Microfono activo: te escucho';
+  else if (STT.wakeOn) txt = '🟢 Esperando "' + n + '" (modo automatico)';
+  else if (STT.bargeOn) txt = '🔴 Atento a interrupciones';
+  else if (MIC.hasStream) txt = '🟡 Microfono encendido';
+  else {
+    txt = '⚪ Microfono apagado · ' + (cfg().wake ? 'palabra de activacion lista' : 'modo manual: pulsa el boton o Espacio');
+  }
+  el.textContent = txt;
+  el.className = (STT.mainOn || STT.wakeOn || STT.bargeOn || MIC.hasStream) ? 'on' : '';
+}
+
+// ─── ESTADO ───────────────────────────────────────────────────────────────
+function setStatus(s, msg) {
+  var prev = appState;
+  appState = s;
+  _lastTrans = prev + '→' + s;
+  app.className = 'app ' + s;
+  SLEEP.onState(s);
+  if (s !== 'listening') { MIC.stopMeter(); setLvl(0); q('#live').textContent = ''; }
+  q('.pupils').style.transform = '';
+  if (s === 'listening') beep(500, 900);
+  else if (s === 'speaking') beep(900, 1400);
+  var ui = STATUS_UI[s] || STATUS_UI.idle;
+  q('#h1txt').textContent    = ui.h;
+  q('#subtxt').textContent   = s === 'error' ? (msg || ui.s) : ui.s;
+  q('#hinttxt').textContent  = ui.t || '';
+  q('#mic').textContent      = isbusy() ? '⏹' : '🎤';
+  q('#stop').hidden          = (s === 'idle' || s === 'error');
+  // Gestionar reconocedores secundarios (DESPUÉS de actualizar appState)
+  if (s === 'idle') {
+    STT.startWake();
+  } else {
+    STT.stopWake();
+  }
+  if (s === 'speaking') {
+    STT.startBarge();
+  } else {
+    STT.stopBarge();
+  }
+  badge();
+}
+
+// ─── MEMORIA ─────────────────────────────────────────────────────────────
+var MEM = (function(){
+  var pub = { list: [] };
+  pub.init = function() {
+    try { pub.list = JSON.parse(localStorage.getItem('mem') || '[]'); } catch(e) { pub.list = []; }
+  };
+  pub.save = function() {
+    try { localStorage.setItem('mem', JSON.stringify(pub.list)); } catch(e) {}
+    renderMem();
+  };
+  pub.isSensitive = function(t) {
+    return /contrasena|password|tarjeta|card number|cvv|\b\d{9,}\b|cedula|pasaporte|ssn|banco/i.test(t);
+  };
+  pub.add = function(t, src) {
+    t = t.trim(); src = src || 'manual';
+    if (!t) return false;
+    if (src === 'auto' && pub.isSensitive(t)) return false;
+    for (var i = 0; i < pub.list.length; i++) {
+      if (pub.list[i].text.toLowerCase() === t.toLowerCase()) return false;
+    }
+    pub.list.push({ id: Date.now() + Math.random(), text: t, src: src });
+    pub.save(); return true;
+  };
+  pub.edit = function(id, t) {
+    t = t.trim();
+    for (var i = 0; i < pub.list.length; i++) {
+      if (pub.list[i].id === id && t) { pub.list[i].text = t; pub.save(); break; }
+    }
+  };
+  pub.remove = function(id) {
+    pub.list = pub.list.filter(function(m){ return m.id !== id; });
+    pub.save();
+  };
+  pub.clear = function() { pub.list = []; pub.save(); };
+  pub.prompt = function() { return pub.list.map(function(m){ return '- ' + m.text; }).join('\n'); };
+  pub.extract = function(u) {
+    var clip = function(s){ return s.replace(/[.!?,;]+$/, '').trim().slice(0, 60); };
+    var m, added = 0;
+    var A = function(t){ if (pub.add(t, 'auto')) added++; };
+    m = u.match(/me llamo ([\w\u00C0-\u024F]+)/i); if (m) A('Tu nombre es ' + clip(m[1]) + '.');
+    m = u.match(/my name is (\w+)/i); if (m) A('Your name is ' + clip(m[1]) + '.');
+    m = u.match(/mi color favorito es (.+)/i); if (m) A('Tu color favorito es ' + clip(m[1]) + '.');
+    m = u.match(/me gustan (.+)/i); if (m) A('Te gustan ' + clip(m[1]) + '.');
+    else { m = u.match(/me gusta (.+)/i); if (m) A('Te gusta ' + clip(m[1]) + '.'); }
+    m = u.match(/estoy aprendiendo (.+)/i); if (m) A('Estas aprendiendo ' + clip(m[1]) + '.');
+    m = u.match(/i(?:'m| am) learning (.+)/i); if (m) A('You are learning ' + clip(m[1]) + '.');
+    m = u.match(/(?:prefiero|me gusta mas|me gusta más) (.+)/i); if (m) A('Prefieres ' + clip(m[1]) + '.');
+    m = u.match(/mi objetivo es (.+)/i); if (m) A('Tu objetivo es ' + clip(m[1]) + '.');
+    m = u.match(/estudio (.+)/i); if (m && !/^(?:mucho|poco|ahora)$/i.test(m[1].trim())) A('Estudias ' + clip(m[1]) + '.');
+    if (added) {
+      pop('🧠');
+      var mb = q('#memb'); mb.textContent = '🧠 Lo recordare!';
+      setTimeout(function(){ mb.textContent = '🧠 Memoria'; }, 1800);
+    }
+  };
+  return pub;
+})();
+
+function renderMem() {
+  var l = q('#memlist'); if (!l) return;
+  l.innerHTML = '';
+  if (!MEM.list.length) {
+    l.textContent = 'Aun no recuerdo nada. Dime "Me llamo..." o agrega un recuerdo.';
+    return;
+  }
+  MEM.list.forEach(function(m) {
+    var d = document.createElement('div');
+    var sp = document.createElement('span');
+    var eb = document.createElement('button');
+    var xb = document.createElement('button');
+    d.className = 'mi'; sp.textContent = m.text;
+    eb.textContent = '✏️';
+    eb.onclick = function(){ sp.contentEditable = true; sp.focus(); };
+    sp.onblur = function(){
+      if (sp.isContentEditable === true || sp.contentEditable === 'true') {
+        MEM.edit(m.id, sp.textContent);
+        sp.contentEditable = false;
+      }
+    };
+    sp.onkeydown = function(k){ if (k.key === 'Enter') { k.preventDefault(); sp.blur(); } };
+    xb.textContent = '🗑️';
+    xb.onclick = function(){ MEM.remove(m.id); };
+    d.appendChild(sp); d.appendChild(eb); d.appendChild(xb);
+    l.appendChild(d);
+  });
+}
+
+// ─── SYSTEM PROMPT ───────────────────────────────────────────────────────
+function sysPrompt() {
+  var mem = MEM.prompt();
+  var pers = PERS_MAP[q('#pers').value] || PERS_MAP.alegre;
+  return SYSTEM +
+    ' Te llamas ' + aName() + '. ' + pers +
+    ' Conversa de forma natural y calida: reacciona a lo que dice el usuario, a veces haz una breve pregunta de seguimiento, y entiende referencias usando el contexto reciente. Si el usuario esta triste, se empatico.' +
+    (mem ? '\nLo que recuerdas del usuario:\n' + mem : '') +
+    (summary ? '\nResumen de conversacion anterior: ' + summary : '');
+}
+
+// ─── RESPUESTAS LOCALES ───────────────────────────────────────────────────
+function local(txt) {
+  var l = txt.toLowerCase();
+  var en = cfg().lang === 'en-US';
+  var n = new Date();
+  if (/qu[eé] hora|what time/.test(l)) return n.toLocaleTimeString(cfg().lang, {hour:'numeric',minute:'2-digit'});
+  if (/qu[eé] d[ií]a|fecha de hoy|what day/.test(l)) return n.toLocaleDateString(cfg().lang, {weekday:'long',day:'numeric',month:'long'});
+  if (/\bdado\b|roll a die/.test(l)) return String(1 + Math.floor(Math.random() * 6));
+  if (/cara o (cruz|sello)|flip a coin/.test(l)) return Math.random() < 0.5 ? (en ? 'Heads' : 'Cara') : (en ? 'Tails' : 'Cruz');
+  var m = l.match(/(temporizador|timer|cron[oó]metro).*?(\d+)\s*(segundo|second|minuto|minute)/);
+  if (m) {
+    var sec = parseInt(m[2], 10) * (/minut/.test(m[3]) ? 60 : 1);
+    setTimeout(function() {
+      beep(800, 1600);
+      var w = en ? 'Time is up!' : 'Se acabo el tiempo!';
+      addMsg('bot', w);
+      if (appState === 'idle') TTS.speak(w);
+    }, sec * 1000);
+    return en ? ('Timer set for ' + m[2] + ' ' + m[3] + 's.') : ('Listo, temporizador de ' + m[2] + ' ' + m[3] + (parseInt(m[2],10) > 1 ? 's' : '') + '.');
+  }
+  return null;
+}
+
+// ─── MOOD ─────────────────────────────────────────────────────────────────
+function mood(t) {
+  app.dataset.mood = userSad ? 'sad' : /[!¡]/.test(t) ? 'wow' : '';
+  pop(/jaj|haha|chiste|joke/i.test(t) ? '😂' : /gracias|thank/i.test(t) ? '💙' : /\?/.test(t) ? '🤔' : /[!¡]/.test(t) ? '✨' : '');
+}
+function userMood(t) {
+  userSad = /\b(triste|me siento mal|cansad|deprimid|lloro|sad|tired|upset)/i.test(t);
+  if (userSad) pop('🫂');
+}
+
+// ─── LOG ──────────────────────────────────────────────────────────────────
+var logEl = q('#log');
+function addMsg(role, text, typed) {
+  var p = document.createElement('p');
+  p.className = role;
+  p.setAttribute('dir', 'auto');
+  p.textContent = (role === 'you' ? '🗣️ ' : '🤖 ') + String(text == null ? '' : text);
+  logEl.appendChild(p);
+  q('#chips').hidden = true;
+  logEl.scrollTop = logEl.scrollHeight;
+  if (role === 'bot') {
+    lastAnswerText = String(text == null ? '' : text);
+    q('#replytools').hidden = false;
+    q('#replyfeedback').textContent = '';
+  }
+}
+
+// ─── IA ───────────────────────────────────────────────────────────────────
+function ask() {
+  var last = history.length ? history[history.length - 1] : null;
+  var input = last && typeof last.content === 'string' ? last.content : '';
+  var endpoint = '';
+  try { endpoint = (q('#aiendpoint').value || localStorage.getItem('au_ai_endpoint') || '').trim(); } catch(e) {}
+  // La IA real se conecta a través de un backend propio: nunca se guarda una API key en este HTML.
+  if (endpoint) {
+    var messages = history.slice(-14).map(function(m){ return { role: m.role, content: m.content }; });
+    return fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: sysPrompt(), messages: messages, app: 'AUCHURUS ULTRA V9.5' })
+    }).then(function(r) {
+      if (!r.ok) throw new Error('El backend de IA respondió HTTP ' + r.status);
+      return r.json();
+    }).then(function(data) {
+      var answer = data && (data.reply || data.response || (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content));
+      if (typeof answer !== 'string' || !answer.trim()) throw new Error('El backend respondió, pero no encontré el texto. Usa {"reply":"..."} o formato OpenAI compatible.');
+      try { q('#aistatus').textContent = 'IA externa: conectada.'; } catch(e) {}
+      return answer.trim();
+    }).catch(function(err) {
+      try { q('#aistatus').textContent = 'IA externa no disponible; usando núcleo local. ' + (err.message || ''); } catch(e) {}
+      return answerUltra(input);
+    });
+  }
+  return Promise.resolve().then(function(){ return answerUltra(input); }).then(function(answer){
+    if (typeof answer !== 'string' || !answer.trim()) throw new Error('La respuesta local llegó vacía');
+    return answer.trim();
+  });
+}
+
+// AUCHURUS CORE: respuestas locales, sin Claude, API ni conexión obligatoria.
+function answerUltraBase(input) {
+  var raw = String(input || '').trim();
+  var t = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?¡!.,;:]/g, ' ').replace(/\s+/g, ' ').trim();
+  var en = cfg().lang === 'en-US';
+  var pick = function(a){ return a[Math.floor(Math.random() * a.length)]; };
+  var has = function(re){ return re.test(t); };
+  var userName = (MEM.list.filter(function(m){return /\b(me llamo|mi nombre es|my name is)\b/i.test(m.text);})[0] || {}).text;
+
+  // INTENCIÓN SOCIAL: Auchurus puede formular saludos dirigidos a una persona.
+  // Funciona con distintas maneras de pedirlo y sin conexión a servicios externos.
+  var greetMatch = t.match(/(?:mandale|mandarle|manda|mandar|enviale|enviarle|envia|enviar|quiero mandar|puedes mandar|puedes enviar|le puedes mandar|le puedes enviar)\s+(?:un\s+)?saludos?\s+a\s+(.+)/) ||
+    t.match(/(?:saluda a|saludar a|dile hola a|dile saludos a|di hola a|say hi to|say hello to|send greetings to|send a greeting to|greet)\s+(.+)/) ||
+    t.match(/dile a\s+(.+?)\s+que\s+(?:le\s+)?(?:mande|mandes|envie|envies)\s+saludos/);
+  if (greetMatch) {
+    var target = greetMatch[1]
+      .replace(/\s+(?:un hombre al azar|una mujer al azar|una persona al azar)\b.*$/, '')
+      .replace(/\s+(?:por favor|porfa|porfis|cuando puedas)\b.*$/, '')
+      .replace(/^(?:mi\s+)?(?:amigo|amiga|companero|companera|hermano|hermana|primo|prima)\s+/, '')
+      .trim();
+    if (/^(?:alguien|una persona(?: al azar)?|un hombre(?: al azar)?|una mujer(?: al azar)?|un amigo|una amiga|al azar)$/i.test(target) || !target) {
+      target = pick(['Alex', 'Dani', 'Sam', 'Andrea', 'Ángel']);
+    } else {
+      target = target.split(/\s+/).map(function(part, index) {
+        return index > 0 && /^(de|del|la|las|los|y)$/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1);
+      }).join(' ');
+    }
+    return en ? ('Hi, ' + target + '! How are you? I am Churus, Kenito’s virtual assistant. Sending you a hello and hoping you are doing great! 👋') : ('¡Hola, ' + target + '! ¿Cómo estás? Soy Churus, el asistente virtual creado por Kenito. ¡Te mando un saludo y espero que estés muy bien! 👋');
+  }
+
+  // Tiempo, fecha y utilidades
+  var util = local(raw); if (util) return util;
+  if (has(/^(hola|holaa*|buenas|buenos dias|buenas tardes|buenas noches|hey|hello|hi|que tal)$/)) return en ? 'Hey! I am Auchurus Ultra, ready to help. What are we exploring today?' : pick(['¡Holaaa! Soy Auchurus Ultra. ¿Qué vamos a descubrir hoy?','¡Buenas! Aquí está Auchurus Ultra, listo para ayudarte. ¿Qué necesitas?','¡Hola! ✨ Dime qué tienes en mente y lo vemos juntos.']);
+  if (has(/como estas|que tal estas|how are you/)) return en ? 'I am running smoothly and ready to help! How are you?' : pick(['¡Funcionando al máximo dentro de mis funciones locales! 😄 ¿Y tú cómo estás?','¡Todo bien por aquí! Listo para ayudarte. ¿Cómo te va a ti?']);
+  if (has(/gracias|thank you|thanks/)) return en ? 'You are very welcome! I am here whenever you need a hand.' : pick(['¡De nada! 💙 Para eso estoy.','¡Con gusto! Cuando quieras, seguimos.','¡A la orden! ✨']);
+  if (has(/me siento triste|estoy triste|me siento mal|estoy preocupado|estoy preocupad|tengo miedo|tuve un mal dia|dia dificil|sad|i feel bad|i am worried/)) return en ? 'I am sorry you are going through that. You do not have to solve everything at once. Want to tell me what happened?' : 'Siento que estés pasando por eso. No tienes que resolverlo todo de golpe. Si quieres, cuéntame qué pasó y lo pensamos con calma. 🫂';
+  if (has(/que sabes de mi|que recuerdas de mi|what do you know about me/)) return MEM.list.length ? (en ? 'Here is what you have asked me to remember: ' : 'Esto es lo que me pediste recordar: ') + MEM.list.map(function(m){return m.text;}).join(' · ') : (en ? 'I do not have saved memories yet. You can add one in the Memory panel.' : 'Todavía no tengo recuerdos guardados. Puedes añadir alguno desde el botón «Memoria».');
+  if (has(/como me llamo|cual es mi nombre|what is my name/)) return userName ? userName : (en ? 'You have not told me your name yet, or it is not saved in memory.' : 'Aún no tengo tu nombre guardado. Si me dices «recuerda que me llamo…», podrás guardarlo en Memoria.');
+  if (has(/como te llamas|quien eres|tu nombre|your name|who are you/)) return en ? 'I am Auchurus Ultra — Punto Ultra, a local assistant created by Kenito.' : 'Soy BEST AUCHURUS ULTRA · PUNTO ULTRA, un asistente local creado por Kenito. ✨';
+  if (has(/que puedes hacer|que sabes hacer|ayuda|help|what can you do/)) return en ? 'I can answer common questions, explain school topics, define concepts, share facts and jokes, do basic arithmetic, tell the time/date, set timers and use saved memories. My built-in knowledge is finite and I do not browse the web.' : 'Puedo responder preguntas frecuentes, explicar temas escolares, definir conceptos, compartir datos curiosos y chistes, hacer cálculos básicos, decir la hora/fecha, poner temporizadores y usar recuerdos guardados. Mi conocimiento integrado es limitado y no navego por Internet.';
+  if (has(/chiste|cuentame algo gracioso|joke/)) return pick(JOKES);
+  if (has(/dato curioso|curiosidad|fun fact/)) return pick(FACTS.concat(['Un día en Venus dura más que un año en Venus.','Los tiburones existen desde antes que los árboles.','La luz del Sol tarda unos 8 minutos y 20 segundos en llegar a la Tierra.','Las mariposas prueban algunos sabores con sus patas.','El corazón humano tiene cuatro cavidades.']));
+  if (has(/capital de francia|capital de panama|capital de espana|capital de mexico|capital de argentina|capital de colombia|capital de peru|capital de chile|capital de costa rica|capital de japon|capital de italia|capital de brasil/)) {
+    var caps = {'capital de francia':'París','capital de panama':'Ciudad de Panamá','capital de espana':'Madrid','capital de mexico':'Ciudad de México','capital de argentina':'Buenos Aires','capital de colombia':'Bogotá','capital de peru':'Lima','capital de chile':'Santiago','capital de costa rica':'San José','capital de japon':'Tokio','capital de italia':'Roma','capital de brasil':'Brasilia'};
+    for (var ck in caps) if (t.indexOf(ck) >= 0) return caps[ck] + (en ? ' is the capital.' : ' es la capital.');
+  }
+  if (has(/que es la fotosintesis|define fotosintesis|what is photosynthesis/)) return 'La fotosíntesis es el proceso por el que las plantas usan la luz solar, agua y dióxido de carbono para producir azúcares y liberar oxígeno.';
+  if (has(/que es la gravedad|define gravedad|what is gravity/)) return 'La gravedad es la fuerza de atracción entre cuerpos con masa. En la Tierra nos mantiene sobre el suelo y hace que los objetos caigan.';
+  if (has(/que es un ecosistema|define ecosistema/)) return 'Un ecosistema es el conjunto de seres vivos y el ambiente físico donde interactúan, como un bosque, un arrecife o un lago.';
+  if (has(/(que es|que son|define|explica).*\bcelulas?\b/)) return 'La célula es la unidad básica de los seres vivos. Algunos organismos tienen una sola célula y otros, como los humanos, tienen billones.';
+  if (has(/planetas|sistema solar/)) return 'El sistema solar tiene ocho planetas: Mercurio, Venus, Tierra, Marte, Júpiter, Saturno, Urano y Neptuno.';
+  if (has(/cuantos continentes|continentes del mundo/)) return 'En el modelo más usado en muchos países hispanohablantes se cuentan seis continentes: América, Europa, Asia, África, Oceanía y Antártida. En otros modelos se cuentan siete.';
+  if (has(/por que el cielo es azul|why is the sky blue/)) return 'El cielo se ve azul porque las moléculas del aire dispersan más la luz azul del Sol que muchos otros colores.';
+  if (has(/mariposa.*cangrejo|cangrejo.*mariposa/)) return 'Semejanza: la mariposa y el cangrejo son animales invertebrados y ambos tienen un exoesqueleto en alguna etapa o forma de su vida. Diferencia: la mariposa es un insecto con seis patas y alas; el cangrejo es un crustáceo con diez patas, pinzas y vive principalmente en ambientes acuáticos.';
+  if (has(/perro|dogs?/) && has(/animal|mamifero|mascota|dato|que es/)) return 'El perro es un mamífero domesticado. Tiene un olfato muy desarrollado y puede aprender señales, rutinas y órdenes.';
+  if (has(/quien fue einstein|albert einstein|who was einstein/)) return 'Albert Einstein fue un físico teórico conocido por desarrollar la teoría de la relatividad y por sus aportes a la física moderna.';
+  if (has(/quien fue simon bolivar|simón bolívar/)) return 'Simón Bolívar fue un líder político y militar clave en los procesos de independencia de varios países de Sudamérica frente al dominio español.';
+  if (has(/que es la inteligencia artificial|define inteligencia artificial/)) return 'La inteligencia artificial (IA) es un conjunto de técnicas que permite a los sistemas informáticos realizar tareas como reconocer patrones, procesar lenguaje o generar contenido. Sus resultados pueden equivocarse, así que conviene verificarlos.';
+  if (has(/que es internet|define internet/)) return 'Internet es una red mundial de redes y dispositivos que intercambian información mediante protocolos comunes. La web es uno de los servicios que funciona sobre Internet.';
+  if (has(/multiplic|cuanto es|cuanto da|calcula|resuelve|what is|calculate|\d\s*(?:\+|\-|\*|\/|\bx\b|\bmas\b|\bmenos\b|\bpor\b|\bentre\b)\s*\d/)) {
+    var expr = t.replace(/cuanto es|cuanto da|calcula|resuelve|what is|calculate|por favor|cuanto|resultado|la respuesta es/g,'').trim();
+    var mm = expr.match(/(-?\d+(?:\.\d+)?)\s*(\+|mas|\-|menos|\*|x|por|\/|entre|dividido entre)\s*(-?\d+(?:\.\d+)?)/);
+    if (mm) { var a=Number(mm[1]), b=Number(mm[3]), op=mm[2], val; if(op==='+'||op==='mas') val=a+b; else if(op==='-'||op==='menos') val=a-b; else if(op==='*'||op==='x'||op==='por') val=a*b; else if(op==='/'||op==='entre'||op==='dividido entre') val=b===0?'No se puede dividir entre cero.':a/b; if(typeof val==='number') return String(Number(val.toFixed(8))); return val; }
+  }
+  if (has(/cara o cruz|cara o sello|flip a coin/)) return Math.random()<.5?'Cara':'Cruz';
+  if (has(/tirar un dado|lanza un dado|roll a die/)) return '🎲 Salió: ' + (1+Math.floor(Math.random()*6));
+  if (has(/me aburro|estoy aburrido|estoy aburrida/)) return '¡Vamos a cambiar eso! 😄 Podemos hacer un acertijo, aprender un dato curioso, jugar a adivinar un animal o resolver una pregunta. ¿Cuál eliges?';
+  if (has(/adios|hasta luego|nos vemos|bye|goodbye/)) return en ? 'See you later! I will be here when you need me.' : '¡Nos vemos!  Aquí estaré cuando quieras volver.';
+  if (has(/que hora|what time/)) return new Date().toLocaleTimeString(cfg().lang,{hour:'numeric',minute:'2-digit'});
+  if (has(/que dia|fecha de hoy|what day|what is the date/)) return new Date().toLocaleDateString(cfg().lang,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  if (has(/recuerda que|remember that/)) return 'Puedo conservar información usando el panel «Memoria». Abre ese panel y pulsa «Añadir recuerdo» para guardarla.';
+  if (has(/^si$|^no$|^ok$|^okay$/)) return en ? 'Got it. What would you like to do next?' : '¡Entendido! ¿Qué te gustaría hacer ahora?';
+  if (has(/^(ja ?ja|jajaja|lol|haha)+$/)) return '😂 ¡Esa energía sí se siente!';
+  // Intentos de conversación: una respuesta cálida, honesta y útil, sin fingir saberlo todo.
+  // Banco adicional de conocimientos locales. Las tildes se normalizan arriba.
+  if (has(/^(buenos dias|buenas tardes|buenas noches)( auchurus)?$/)) return en ? 'Hello! I am ready to help. What would you like to explore?' : '¡Muy buenas!  Aquí estoy, listo para ayudarte. ¿Qué hacemos hoy?';
+  if (has(/quien te creo|quien te hizo|quien es tu creador|creador de auchurus|who created you|who made you/)) return en ? 'I was built as a local assistant project by Kenito. I am not connected to Claude or a cloud AI.' : 'Soy un proyecto de asistente local creado por Kenito. No estoy conectado a Claude ni a una IA en la nube.';
+  if (has(/que significa|define |definicion de/)) {
+    var defs = [
+      [/\b(respeto)\b/, 'El respeto es reconocer el valor, los derechos y los límites de otras personas, aunque pensemos distinto.'],
+      [/\b(responsabilidad)\b/, 'La responsabilidad es cumplir nuestros deberes y asumir las consecuencias de nuestras decisiones.'],
+      [/\b(empatia)\b/, 'La empatía es intentar comprender cómo se siente otra persona y mirar la situación desde su perspectiva.'],
+      [/\b(civismo)\b/, 'El civismo es comportarse con respeto y colaborar para convivir bien en la comunidad.'],
+      [/\b(energia)\b/, 'La energía es la capacidad de producir cambios o realizar trabajo. Puede manifestarse como luz, calor, movimiento o electricidad.'],
+      [/\b(materia)\b/, 'La materia es todo aquello que tiene masa y ocupa espacio.'],
+      [/\b(software)\b/, 'El software es el conjunto de programas e instrucciones que permiten que un dispositivo realice tareas.'],
+      [/\b(hardware)\b/, 'El hardware son las partes físicas de una computadora, como la pantalla, el teclado y el procesador.'],
+      [/\b(democracia)\b/, 'La democracia es una forma de organización política en la que la ciudadanía participa en las decisiones, directamente o mediante representantes.'],
+      [/\b(amor)\b/, 'El amor es un sentimiento de cariño y cuidado que se demuestra con respeto, confianza, consideración y acciones.'],
+      [/\b(amistem|amistad)\b/, 'La amistad es una relación de confianza, respeto y apoyo mutuo entre personas.'],
+      [/\b(ecologia)\b/, 'La ecología estudia las relaciones de los seres vivos entre sí y con su ambiente.'],
+      [/\b(fuerza)\b/, 'En física, una fuerza es una interacción capaz de cambiar el movimiento de un objeto o deformarlo.'],
+      [/\b(algoritmo)\b/, 'Un algoritmo es una secuencia ordenada de pasos para resolver un problema o realizar una tarea.']
+    ];
+    for (var di = 0; di < defs.length; di++) if (defs[di][0].test(t)) return defs[di][1];
+  }
+  if (has(/cuantos dias tiene una semana|dias de la semana/)) return 'Una semana tiene siete días: lunes, martes, miércoles, jueves, viernes, sábado y domingo.';
+  if (has(/cuantos meses tiene un ano|meses del ano/)) return 'Un año tiene doce meses: enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre y diciembre.';
+  if (has(/cuantos lados tiene un triangulo/)) return 'Un triángulo tiene tres lados y tres ángulos interiores.';
+  if (has(/cuantos lados tiene un cuadrado/)) return 'Un cuadrado tiene cuatro lados iguales y cuatro ángulos rectos.';
+  if (has(/formula del area de un rectangulo|area de un rectangulo/)) return 'El área de un rectángulo se calcula multiplicando la base por la altura: A = base × altura.';
+  if (has(/formula del area de un triangulo|area de un triangulo/)) return 'El área de un triángulo es base por altura dividida entre dos: A = (b × h) / 2.';
+  if (has(/que es la fotosintesis/)) return 'La fotosíntesis permite que las plantas usen la energía de la luz para fabricar azúcares a partir de agua y dióxido de carbono; también liberan oxígeno.';
+  if (has(/que es un mamifero|mamiferos/)) return 'Los mamíferos son vertebrados que tienen pelo en alguna etapa de su vida y cuyas hembras alimentan a sus crías con leche.';
+  if (has(/que es un insecto|insectos/)) return 'Los insectos son artrópodos con seis patas, cuerpo dividido normalmente en cabeza, tórax y abdomen, y un par de antenas.';
+  if (has(/que es un vertebrado|vertebrados/)) return 'Los vertebrados son animales que tienen columna vertebral, como los peces, anfibios, reptiles, aves y mamíferos.';
+  if (has(/que es un invertebrado|invertebrados/)) return 'Los invertebrados son animales que carecen de columna vertebral. Algunos ejemplos son insectos, medusas, moluscos, arañas y cangrejos.';
+  if (has(/que es panama|sobre panama|panama es/)) return 'Panamá es un país de América Central que conecta América Central y América del Sur. Su canal es una vía importante para el comercio marítimo mundial y su capital es Ciudad de Panamá.';
+  if (has(/canal de panama|como funciona el canal/)) return 'El Canal de Panamá es una vía navegable que conecta los océanos Atlántico y Pacífico. Sus esclusas elevan y bajan los barcos para que puedan cruzar el istmo.';
+  if (has(/que es la fotosintesis|que es la gravedad|que es la celula/)) return 'Puedo explicar ese tema con un ejemplo si me dices qué parte quieres comprender mejor.';
+  if (has(/traduce .*hello|como se dice hola en ingles|hola en ingles/)) return '«Hola» en inglés se dice “hello” o, de forma informal, “hi”.';
+  if (has(/palabra en ingles|ensename una palabra|teach me an english word/)) return 'Palabra de hoy: “curious” significa “curioso”. Ejemplo: “I am curious” = “Tengo curiosidad / Soy curioso”.';
+  if (has(/adivinanza|acertijo|riddle/)) return pick(['Tengo agujas y no sé coser; tengo números y no sé leer. ¿Qué soy? Un reloj.','Cuanto más quitas, más grande se vuelve. ¿Qué es? Un agujero.','Tiene dientes y no come. ¿Qué es? Un peine.']);
+  if (has(/que puedes hacer|que sabes hacer|ayuda|help|what can you do/)) return en ? 'I can answer common questions, explain school topics, define concepts, share facts and jokes, do basic arithmetic, tell time/date, set timers and use saved memories. My built-in knowledge is finite and I do not browse the web.' : 'Puedo conversar de forma básica, responder preguntas frecuentes, explicar temas escolares, definir conceptos, compartir datos curiosos y chistes, hacer cálculos, decir la hora y la fecha, poner temporizadores y usar la memoria. Mi conocimiento integrado es amplio en temas básicos, pero limitado; no navego por Internet.';
+  if (raw.length < 100 && has(/por que|porque|como puedo|que hago|me recomiendas|opinion|consejo/)) return 'Puedo ayudarte a pensarlo paso a paso. Cuéntame un poco más de la situación o qué resultado buscas y te daré una orientación concreta.';
+  return en ? 'Let’s explore that. Tell me which part interests you most or what you want to achieve, and I’ll help you find a useful starting point.' : 'Vamos a verlo. 😊 Dime qué aspecto te interesa más o qué quieres conseguir con ese tema, y te ayudaré a encontrar un punto de partida útil.';
+}
+
+// ─── AUCHURUS CORE PLUS V7: comprensión, contexto y modo estudiante ────────
+// Conserva el motor anterior como respaldo para no perder respuestas existentes.
+var lastTopic = '';
+function normalizeUltra(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[¿?¡!.,;:]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function rememberTopic(topic) {
+  if (!topic) return;
+  lastTopic = topic;
+  try { sessionStorage.setItem('auchurus_topic', topic); } catch(e) {}
+}
+
+function onlineEnabled() { var el = document.querySelector('#onlineopt'); return !!(el && el.checked); }
+
+// V9: consulta una fuente web con CORS habilitado y devuelve un resumen con enlace.
+async function searchKnowledgeWeb(query) {
+  var qText = String(query || '').trim();
+  if (!qText) return null;
+  try {
+    var endpoint = 'https://es.wikipedia.org/w/api.php?action=query&list=search&srsearch=' +
+      encodeURIComponent(qText) + '&format=json&origin=*&srlimit=3';
+    var resp = await fetch(endpoint);
+    if (!resp.ok) throw new Error('No se pudo consultar Wikipedia');
+    var data = await resp.json();
+    var hits = data && data.query && data.query.search || [];
+    if (!hits.length) return null;
+    var title = hits[0].title;
+    var summaryResp = await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g, '_')));
+    if (!summaryResp.ok) throw new Error('No se pudo leer el resumen');
+    var summary = await summaryResp.json();
+    if (!summary || !summary.extract) return null;
+    var source = summary.content_urls && summary.content_urls.desktop && summary.content_urls.desktop.page;
+    return { title: summary.title || title, extract: summary.extract, source: source || ('https://es.wikipedia.org/wiki/' + encodeURIComponent(title.replace(/ /g, '_'))) };
+  } catch (e) { return null; }
+}
+function answerUltra(input) {
+  var raw = String(input || '').trim(), t = normalizeUltra(raw), en = cfg().lang === 'en-US';
+  var pick = function(a){ return a[Math.floor(Math.random()*a.length)]; };
+  var m, topic;
+  // Conversación sobre intereses personales y proyectos creativos.
+  // Reconoce frases como: "Hola, me gusta aprender proyectos de sublimación".
+  if (/(?:me gusta|me encanta|quiero|quisiera|me interesa|estoy aprendiendo|me gustaria aprender|me gustaría aprender).*(?:sublimacion|sublimación)/.test(raw.toLowerCase()) || /(?:sublimacion|sublimación).*(?:me gusta|me encanta|aprender|proyectos)/.test(raw.toLowerCase())) {
+    rememberTopic('proyectos de sublimación');
+    return en
+      ? 'That sounds like a fun creative skill! 😊 Sublimation lets you personalize items such as mugs, shirts and keychains with your own designs. What would you like to explore first: project ideas, materials and equipment, or the step-by-step process?'
+      : '¡Qué interesante! 😊 La sublimación te permite personalizar artículos como tazas, camisetas y llaveros con diseños propios. ¿Qué te gustaría aprender primero: ideas de proyectos, materiales y equipos que se necesitan, o el proceso paso a paso?';
+  }
+  // Conversación natural: responder a réplicas como "estoy muy bien, ¿y tú?".
+  if (/^(?:estoy|me encuentro|ando) (?:muy )?(?:bien|genial|excelente|regular|mal)(?: y tu| y usted| gracias y tu)?$/.test(t) || /^(?:bien|muy bien|genial|excelente|todo bien) y tu$/.test(t)) {
+    return pick(['¡Qué bueno saberlo! 😊 ¿Qué te gustaría hacer ahora?','¡Me alegra! Por aquí estoy listo para conversar contigo. ¿Qué hacemos ahora?','¡Excelente! Cuéntame, ¿qué tienes en mente?']);
+  }
+  if (/^(?:y tu|y tú|tu que tal|y como estas|y como te va|y tu como estas)$/.test(t)) {
+    return '¡Gracias por preguntar! Estoy aquí, listo para ayudarte y conversar contigo. 😊';
+  }
+  if (/^(?:jaja+|jeje+|jiji+|que risa|😂+|🤣+)$/.test(t)) return pick(['¡Jajaja! 😂','¡Me alegra sacarte una sonrisa!','Jajaja, seguimos 😄']);
+  // Mensajes sociales flexibles: detecta el destinatario y conserva el texto extra pedido.
+  // Ej.: "saludos a John Castillo, dile que su mamá lo quiere mucho".
+  var social = raw.match(/^(?:(?:por favor[, ]*)?(?:m[aá]ndale|manda(?:le)?|env[ií]ale|env[ií]a(?:le)?|dile|di|saludos a|un saludo a|saluda a|quiero saludar a|quiero mandarle saludos a)\s+)(.+)$/i);
+  if (social) {
+    var payload = social[1].trim();
+    // V9: no inventar nombres ni leer una orden como si fuera el saludo.
+    if (/^(?:a\\s+)?(?:el|él|ella|ellos|ellas|esa persona|ese chico|esa chica)\\b/i.test(payload) &&
+        !/\\b(?:dile|di|que le diga|que le mandes|su nombre es)\\b/i.test(payload)) {
+      return '¡Claro! ¿Cómo se llama esa persona? Dime su nombre y te preparo un saludo natural, sin repetir tu instrucción.';
+    }
+    payload = payload.replace(/\s+(?:por favor|porfa|porfis)$/i, '').trim();
+    var split = payload.match(/^(.+?)(?:\s*[,;:]\s*|\s+(?:y dile|y di|dile|di|y que|que le digas|tamb[ié]n dile)\s+)(?:que\s+)?(.+)$/i);
+    var recipient = split ? split[1].trim() : payload;
+    var extra = split ? split[2].trim() : '';
+    recipient = recipient.replace(/^(?:un saludo|saludos|un mensaje)\s+(?:para|a)\s+/i, '').trim();
+    if (/^(?:alguien|una persona(?: al azar)?|un hombre(?: al azar)?|una mujer(?: al azar)?|al azar)$/i.test(recipient)) recipient = pick(['Alex','Dani','Sam','Andrea','Ángel','Sofía','Mateo']);
+    recipient = recipient.replace(/[.!?]+$/, '').trim();
+    if (recipient && recipient.length < 100 && !/^(?:que|su mam[aá]|su pap[aá]|le digo)$/i.test(recipient)) {
+      var recipientTitle = recipient.split(/\s+/).map(function(x){return x.charAt(0).toUpperCase()+x.slice(1);}).join(' ');
+      var reply = '¡Hola, ' + recipientTitle + '! ¿Cómo estás? Soy Churus, el asistente virtual creado por Kenito. ¡Te mando un saludo y espero que estés muy bien!';
+      if (extra) {
+        var reported = /^(?:dice que|dijo que|me dijo que)\s+(.+)$/i.exec(extra);
+        extra = extra.replace(/^(?:que\s+)?(?:le\s+)?(?:diga|digas|dile|di|le mande|manda|env[ií]e|env[ií]ale)\s*/i, '').trim();
+        if (reported) extra = reported[1].trim();
+        // Reescribe referencias en tercera persona para que el mensaje suene dirigido al destinatario.
+        extra = extra.replace(/\bsu mam[aá] lo quiere mucho\b/i, 'tu mamá te quiere mucho')
+                     .replace(/\bsu mam[aá] lo quiere\b/i, 'tu mamá te quiere')
+                     .replace(/\bsu pap[aá] lo quiere mucho\b/i, 'tu papá te quiere mucho')
+                     .replace(/\bsu mam[aá]\b/i, 'tu mamá');
+        if (extra) {
+          extra = extra.charAt(0).toLowerCase() + extra.slice(1).replace(/[.!?]+$/, '');
+          reply += (reported ? ' Además, me dijeron que ' : ' Además, quería decirte que ') + extra + '.';
+        }
+      }
+      return reply;
+    }
+  }
+  // V9: consulta una fuente web si el usuario activa las consultas en Internet.
+  if (onlineEnabled() && /^(busca|buscar|investiga|consulta en internet|busca en internet|busca información de|busca informacion de|investiga sobre|search for|look up)\b/.test(t)) {
+    var query = raw.replace(/^(busca|buscar|investiga|consulta en internet|busca en internet|busca información de|busca informacion de|investiga sobre|search for|look up)\s*/i, '').trim();
+    if (query) {
+      return searchKnowledgeWeb(query).then(function(result) {
+        if (result) {
+          rememberTopic(query);
+          return 'Encontré información sobre ' + result.title + ':\n\n' + result.extract + '\n\nFuente: ' + result.source + '\n\nSi quieres, te lo explico con palabras más sencillas.';
+        }
+        try { window.open('https://www.google.com/search?q=' + encodeURIComponent(query), '_blank', 'noopener'); } catch(e) {}
+        return 'No pude recuperar un resumen de una fuente en este momento, así que abrí una búsqueda web sobre «' + query + '».';
+      });
+    }
+  }
+  // "¿Sabes algo de X?" también puede consultar la web cuando la opción está activada.
+  if (onlineEnabled() && /\b(?:sabes algo de|qué sabes de|que sabes de|háblame de|hablame de|información sobre|informacion sobre|explícame|explicame)\b/.test(t)) {
+    var webTopic = raw.replace(/^.*?\b(?:sabes algo de|qué sabes de|que sabes de|háblame de|hablame de|información sobre|informacion sobre|explícame|explicame)\b\s*/i, '').trim();
+    if (webTopic) {
+      return searchKnowledgeWeb(webTopic).then(function(result) {
+        if (result) {
+          rememberTopic(webTopic);
+          return 'Sí, te cuento brevemente: ' + result.extract + '\n\nFuente para ampliar: ' + result.source;
+        }
+        return answerUltraBase(raw);
+      });
+    }
+  }
+  // Social writing: greeting, congratulations, thanks, apology, farewell.
+  m = t.match(/^(?:escribe|redacta|crea|haz|prepara|dime|quiero)\s+(?:un\s+)?(?:mensaje|saludo|felicitacion|disculpa|agradecimiento|despedida)\s+(?:para|a)\s+(.+)$/);
+  if (m) {
+    var who = m[1].replace(/\b(por favor|porfa|porfis)\b/g,'').trim();
+    var title = who.split(/\s+/).map(function(x){return x.charAt(0).toUpperCase()+x.slice(1)}).join(' ');
+    if (/felicitacion|felicitar/.test(t)) return '¡Felicidades, ' + title + '! 🎉 Te deseo mucha alegría, éxitos y cosas bonitas en esta nueva etapa. ¡Disfruta tu día!';
+    if (/disculpa/.test(t)) return 'Hola, ' + title + '. Quería pedirte disculpas si hice algo que te molestó. No era mi intención y espero que podamos hablarlo con tranquilidad.';
+    if (/agradecimiento/.test(t)) return 'Hola, ' + title + '. Quería darte las gracias por tu apoyo y por estar ahí. De verdad lo aprecio mucho. 💙';
+    if (/despedida/.test(t)) return '¡Cuídate mucho, ' + title + '! Me dio gusto hablar contigo. Espero que tengas un excelente día. 👋';
+    return '¡Hola, ' + title + '! ¿Cómo estás? Soy Churus, el asistente virtual creado por Kenito. ¡Te mando un saludo y espero que estés muy bien! 👋';
+  }
+  if (/^(buenos dias|buenas tardes|buenas noches|hola|saluda|mandale saludos|manda saludos|dile hola)/.test(t) && /\b(azar|aleatorio|aleatoria|alguien|persona|hombre|mujer)\b/.test(t)) {
+    return '¡Hola, ' + pick(['Alex','Dani','Sam','Andrea','Ángel','Sofía','Mateo']) + '! ¿Cómo estás? Soy Churus, el asistente virtual creado por Kenito. ¡Te mando un saludo! 👋';
+  }
+  // Follow-up questions use the recent conversation topic where possible.
+  if (/^(y eso|explica mas|explicame mas|mas detalles|por que|como asi|dame un ejemplo|un ejemplo|continua|sigue|y despues|que mas)$/.test(t)) {
+    var prev = history.slice().reverse().find(function(x){return x.role === 'user' && x.content && normalizeUltra(x.content) !== t;});
+    var ctx = lastTopic || (prev && prev.content) || '';
+    if (ctx) return 'Claro. Sobre «' + ctx + '»: ' + ( /ejemplo/.test(t) ? 'un ejemplo sencillo ayuda a verlo en la práctica. Piensa en una situación cotidiana relacionada con ese tema y observa qué cambia y por qué.' : 'la idea principal es entender qué ocurre, por qué ocurre y cómo se relaciona con lo que vimos. Si me dices qué parte te confunde, la explico con palabras más sencillas.');
+  }
+  // Explicit memory commands; saves only when the user asks.
+  m = raw.match(/^(?:recuerda que|acuérdate de que|guarda en memoria que|remember that)\s+(.+)$/i);
+  if (m) { MEM.add(m[1].trim()); return '¡Listo! Guardé en memoria: «' + m[1].trim() + '». Puedes revisarlo o borrarlo desde el panel Memoria.'; }
+  if (/^(olvida todo|borra mi memoria|olvida mis recuerdos|forget my memories)$/.test(t)) { MEM.clear(); return 'He borrado los recuerdos guardados en Auchurus.'; }
+  // School mode: short, structured explanations and common formula prompts.
+  if (/^(modo estudiante|modo profe|modo estudiante activado)$/.test(t)) return '📚 Modo estudiante activado. Envíame la pregunta o el ejercicio y te ayudaré con: 1) qué pide, 2) pasos, 3) respuesta y 4) comprobación.';
+  if (/^(resuelve|ayudame con|ayúdame con|explica paso a paso|paso a paso)\b/.test(t)) {
+    topic = raw.replace(/^(resuelve|ayudame con|ayúdame con|explica paso a paso|paso a paso)\s*/i,'').trim();
+    if (topic) { rememberTopic(topic); return '📚 Vamos paso a paso con: ' + topic + '\n1. Identificamos qué nos piden.\n2. Anotamos los datos y la regla o fórmula necesaria.\n3. Aplicamos la regla con cuidado.\n4. Revisamos si la respuesta tiene sentido.\n\nEnvíame el enunciado completo o una foto descrita del ejercicio y hacemos los cálculos concretos.'; }
+  }
+  // General basic facts added to the local knowledge bank.
+  var knowledge = [
+    [/^(que es la fotosintesis|explica la fotosintesis)$/, 'La fotosíntesis es el proceso por el que las plantas usan luz solar, agua y dióxido de carbono para fabricar azúcares; como resultado liberan oxígeno.'],
+    [/^(que es la mitosis|explica la mitosis)$/, 'La mitosis es la división de una célula que produce dos células hijas con la misma información genética que la célula original.'],
+    [/^(que es la democracia|define democracia)$/, 'La democracia es una forma de gobierno en la que la ciudadanía participa en las decisiones, directamente o mediante representantes elegidos.'],
+    [/^(que es la fuerza|define fuerza)$/, 'En física, una fuerza es una interacción que puede cambiar el movimiento de un objeto o deformarlo. Se mide en newtons (N).'],
+    [/^(formula de velocidad|como se calcula la velocidad)$/, 'La velocidad media se calcula como distancia dividida entre tiempo: v = d / t. Por ejemplo, 100 metros en 20 segundos equivalen a 5 m/s.'],
+    [/^(formula de densidad|como se calcula la densidad)$/, 'La densidad se calcula dividiendo la masa entre el volumen: ρ = m / V. Conviene usar unidades compatibles, como kg/m³ o g/cm³.'],
+    [/^(que es un sustantivo|define sustantivo)$/, 'Un sustantivo es una palabra que nombra personas, animales, lugares, objetos, ideas o sentimientos; por ejemplo: estudiante, perro, Panamá, mesa y alegría.'],
+    [/^(que es un verbo|define verbo)$/, 'Un verbo expresa una acción, un estado o un proceso, como correr, estar, crecer o pensar.'],
+    [/^(cuanto es|calcula|resuelve)\s+\d+\s*(mas|menos|por|entre|\+|\-|\*|\/|x)\s*\d+$/, null]
+  ];
+  for (var i=0;i<knowledge.length;i++) if (knowledge[i][0].test(t) && knowledge[i][1]) { rememberTopic(raw); return knowledge[i][1]; }
+  // Set topic from meaningful school/science prompts to help with follow-ups.
+  if (/(fotosintesis|mitosis|gravedad|ecosistema|celula|historia|geografia|matematica|algebra|fraccion|velocidad|densidad|democracia|panama|einstein)/.test(t)) rememberTopic(raw);
+  // Reparación conversacional: aceptar correcciones sin discutir y pedir precisión cuando falta contexto.
+  if (/^(no|no eso|no era eso|no me refiero a eso|no entendiste|no entendistes|te equivocaste|eso no fue lo que dije)$/.test(t)) {
+    var priorUser = history.slice(0, -1).reverse().find(function(x){ return x.role === 'user' && x.content; });
+    return priorUser ? 'Gracias por corregirme. Creo que no entendí bien lo que querías decir con «' + priorUser.content + '». ¿Me lo explicas de otra manera y lo intento de nuevo?' : 'Gracias por corregirme. ¿Qué parte entendí mal? Lo reviso contigo.';
+  }
+  m = raw.match(/^(?:me refiero a|quise decir|lo que quiero decir es|en realidad quería decir|corrijo:?)\s*(.+)$/i);
+  if (m) return '¡Ah, ahora te entiendo mejor! Te refieres a «' + m[1].trim() + '». Voy a tomar eso como la aclaración y responder desde ahí.';
+  if (/^(?:si|sí|exacto|correcto|as[ií] mismo|aj[aá])$/.test(t)) {
+    var lastBot = history.slice(0, -1).reverse().find(function(x){ return x.role === 'assistant' && x.content; });
+    if (lastBot && /\?$/.test(lastBot.content.trim())) return '¡Perfecto! Entonces seguimos desde ahí. ¿Qué te gustaría añadir o preguntar?';
+  }
+  if (/^(?:no se|no sé|ni idea|no estoy seguro|no estoy segura)$/.test(t)) return 'No pasa nada; podemos pensarlo juntos. Te puedo dar algunas opciones para que elijas la que más se acerque a lo que quieres decir.';
+  // V9: conocimiento práctico de temas frecuentes.
+  if (/\b(?:criptomonedas?|bitcoin|ethereum|blockchain|cripto)\b/.test(t)) {
+    rememberTopic('criptomonedas');
+    return 'Sí. Las criptomonedas son activos digitales que suelen usar una tecnología llamada blockchain para registrar transacciones. Bitcoin y Ethereum son ejemplos conocidos. Sus precios pueden cambiar mucho y hay riesgos de estafas y pérdida de dinero; conviene investigar antes de invertir. ¿Quieres saber cómo funcionan, qué es Bitcoin o cuáles son los riesgos?';
+  }
+  if (/\bmarketing\b/.test(t)) {
+    rememberTopic('marketing');
+    return 'El marketing consiste en entender qué necesita un público y comunicarle el valor de un producto o servicio. Para empezar, define a quién quieres llegar, qué problema resuelves, qué te diferencia y dónde está tu público. ¿Lo quieres aplicar a un negocio, redes sociales o una marca personal?';
+  }
+  if (/\b(?:casa|fachada|pared|habitacion|habitación|sala|decoracion|decoración|combina|combinar|color)\b/.test(t) && /\b(?:rojo|roja|colores?|pintar|combina|combinar|fachada|pared|casa)\b/.test(t)) {
+    rememberTopic('combinación de colores para casa');
+    return 'Con rojo combinan muy bien el blanco roto, crema, gris claro, beige y tonos madera. Para una casa elegante, usaría paredes crema o gris muy claro, detalles rojos como acento y marcos negros o madera natural. Evita usar rojo intenso en todas las paredes porque puede recargar el espacio. ¿Es para la fachada o para el interior?';
+  }
+  if (/\b(?:sublimacion|sublimación)\b/.test(t)) {
+    rememberTopic('sublimación');
+    return 'La sublimación permite transferir diseños a artículos preparados para ello, como tazas, camisetas de poliéster y llaveros. Normalmente necesitas un diseño, tinta y papel de sublimación, una impresora compatible y una prensa térmica adecuada al producto. Comprueba que el artículo tenga recubrimiento para sublimación. ¿Quieres ideas de proyectos, materiales o calcular costos?';
+  }
+  if (/\b(?:emprender|emprendimiento|negocio|vender|ventas|clientes)\b/.test(t)) {
+    rememberTopic('emprendimiento');
+    return 'Para empezar un pequeño negocio, elige un producto o servicio concreto, identifica a quién le serviría, calcula los costos y prueba primero con pocos clientes. Publica ejemplos reales de tu trabajo y pide opiniones. ¿Qué tipo de negocio tienes en mente?';
+  }
+  if (/\b(?:inteligencia artificial|ia generativa|chatgpt)\b/.test(t)) {
+    rememberTopic('inteligencia artificial');
+    return 'La inteligencia artificial permite a los sistemas reconocer patrones y generar respuestas, imágenes o predicciones. Puede ayudar a estudiar y trabajar, pero también puede equivocarse; verifica los datos importantes. ¿Quieres saber cómo funciona o cómo usarla en un proyecto?';
+  }
+  // Variations of common questions, then defer to all previously implemented answers.
+  if (/^(como estas|como te va|todo bien|que tal estas)$/.test(t)) return pick(['¡Todo bien por aquí! Estoy listo para ayudarte. ¿Y tú cómo estás?','¡Aquí estoy, funcionando y preparado para ayudarte! ¿Qué tal te va?']);
+  return answerUltraBase(raw);
+}
+
+// ─── HISTORIAL ────────────────────────────────────────────────────────────
+function saveHistory() {
+  try { localStorage.setItem('hist', JSON.stringify(history.slice(-40))); } catch(e) {}
+}
+function compact() {
+  if (history.length <= 24) return;
+  var old = history.slice(0, -10);
+  history = history.slice(-10);
+  var txt = old.map(function(m){ return (m.role === 'user' ? 'Usuario: ' : 'Auchurus: ') + m.content; }).join('\n');
+  summary = (summary + ' ' + txt).slice(-900);
+  try { localStorage.setItem('sum', summary); } catch(e) {}
+  saveHistory();
+}
+
+// ─── ERROR FRIENDLY ───────────────────────────────────────────────────────
+function friendly(code) {
+  switch(code) {
+    case 'not-allowed': case 'service-not-allowed': case 'mic-blocked':
+      return 'Microfono bloqueado. Acepta el permiso del navegador. Mientras, escribeme abajo.';
+    case 'audio-capture': return 'No encuentro ningun microfono conectado.';
+    case 'no-speech':     return 'No te alcance a escuchar.';
+    case 'network':       return 'Problema de red. Verifica tu conexion.';
+    case 'aborted':       return '';
+    case 'nostt':         return 'Tu navegador no soporta reconocimiento de voz. Puedes escribir abajo.';
+    case 'language-not-supported': return 'Idioma no soportado en este navegador.';
+    default: return code || 'Algo salio mal. Intentalo de nuevo.';
+  }
+}
+
+// ─── FLUJO PRINCIPAL ─────────────────────────────────────────────────────
+function respond(text, id) {
+  text = String(text || '').trim();
+  if (!text) return Promise.resolve(false);
+  try { MEM.extract(text); } catch(e) { dbgErr('mem: ' + (e.message || e)); }
+  userMood(text);
+  addMsg('you', text);
+  setStatus('processing');
+  history.push({ role: 'user', content: text });
+  saveHistory();
+  lastUserText = text;
+  return ask().then(function(reply) {
+    if (id !== runId) return false;
+    history.push({ role: 'assistant', content: reply });
+    saveHistory(); compact();
+    addMsg('bot', reply, false);
+    mood(reply);
+    // El mensaje queda visible incluso si el sistema de voz no está disponible.
+    setStatus('speaking');
+    return TTS.speak(reply).then(function() {
+      if (id !== runId) return true;
+      setStatus('idle');
+      if (cfg().cont) turn();
+      return true;
+    });
+  }).catch(function(e) {
+    if (id !== runId) return false;
+    var fallback = cfg().lang === 'en-US'
+      ? 'I had a small internal error, but I am still here. Please try sending that message once more.'
+      : 'Tuve un pequeño error interno, pero sigo aquí. Prueba enviar el mensaje otra vez.';
+    dbgErr(e && (e.message || String(e)) || 'ask error');
+    history.push({ role: 'assistant', content: fallback });
+    saveHistory();
+    addMsg('bot', fallback);
+    setStatus('idle');
+    return false;
+  });
+}
+
+function turn() {
+  var id = ++runId;
+  TTS.cancel();
+  // Mostrar respuesta visual inmediatamente al tocar el microfono.
+  setStatus('listening', 'Activando el reconocimiento de voz…');
+  if (!STT_CTOR()) { setStatus('error', friendly('nostt')); return; }
+  try { MIC.startMeter(); } catch(micErr) { dbgErr('medidor: ' + (micErr.message || micErr)); }
+  try { STT.listen(cfg().lang).then(function(text) {
+    if (id !== runId) return;
+    respond(text, id);
+  }).catch(function(e) {
+    if (id !== runId) return;
+    if (e.message === 'aborted') return;
+    if (e.message === 'no-speech' && cfg().cont) { turn(); return; }
+    var msg = friendly(e.message);
+    dbgErr(e.message);
+    if (msg) setStatus('error', msg);
+    else setStatus('idle');
+  }).catch(function(e) {
+    if (id !== runId) return;
+    dbgErr('STT inesperado: ' + (e && (e.message || e)));
+    setStatus('error', 'No pude iniciar el micrófono. Comprueba permisos y vuelve a intentarlo.');
+  }); } catch(e) {
+    dbgErr('inicio STT: ' + (e && (e.message || e)));
+    setStatus('error', 'El navegador no pudo iniciar el micrófono. Revisa los permisos.');
+  }
+}
+
+function stop() {
+  runId++;
+  STT.stopAll();
+  TTS.cancel();
+  MIC.stopMeter();
+  setStatus('idle');
+}
+
+var _togBusy = false;
+function toggle() {
+  if (_togBusy) return;
+  _togBusy = true;
+  setTimeout(function(){ _togBusy = false; }, 350);
+  try {
+    if (isbusy()) stop();
+    else turn();
+  } catch(e) {
+    dbgErr('botón micrófono: ' + (e && (e.message || e)));
+    try { setStatus('error', 'No se pudo activar el micrófono. Abre Ajustes y revisa los permisos del navegador.'); } catch(ignore) {}
+  }
+}
+
+function sendText(t) {
+  t = String(t || '').trim();
+  if (!t) return Promise.resolve(false);
+  SLEEP.wake();
+  var id = ++runId;
+  TTS.cancel();
+  STT.abortMain();
+  return respond(t, id);
+}
+
+// ─── WAKE HANDLER ─────────────────────────────────────────────────────────
+var _wakeBusy = false;
+function onWake(fullText) {
+  if (_wakeBusy) return;
+  _wakeBusy = true;
+  STT.stopWake();
+  SLEEP.wake();
+  app.classList.add('wide');
+  setTimeout(function(){ app.classList.remove('wide'); }, 900);
+  beep(700, 1500);
+  pop('👀');
+  var n = aName().toLowerCase();
+  var after = fullText.replace(new RegExp('.*(oye|hey|hola|ok)?\\s*' + n + '\\s*', 'i'), '').trim();
+  var id = ++runId;
+  if (after.length > 2) {
+    _wakeBusy = false;
+    sendText(after);
+  } else {
+    var greeting = cfg().lang === 'en-US' ? ("Yes! I'm " + aName() + '.') : ('Si! Soy ' + aName() + '.');
+    addMsg('bot', greeting);
+    setStatus('speaking');
+    TTS.speak(greeting).then(function() {
+      if (id !== runId) { _wakeBusy = false; return; }
+      _wakeBusy = false;
+      turn();
+    });
+  }
+}
+
+// ─── VOICES ───────────────────────────────────────────────────────────────
+function voices() {
+  var sel = q('#voice');
+  if (!sel) return;
+  var previous = sel.value;
+  sel.textContent = '';
+  if (!window.speechSynthesis) {
+    var fallback = document.createElement('option');
+    fallback.value = ''; fallback.textContent = 'Voz predeterminada del navegador';
+    sel.appendChild(fallback); return;
+  }
+  var l = cfg().lang.slice(0, 2);
+  var vs = speechSynthesis.getVoices().filter(function(v){ return (v.lang || '').toLowerCase().startsWith(l); });
+  vs.sort(function(a, b){ return (/google|natural|online/i.test(b.name) ? 1 : 0) - (/google|natural|online/i.test(a.name) ? 1 : 0); });
+  if (!vs.length) {
+    var opt = document.createElement('option'); opt.value = ''; opt.textContent = 'Voz predeterminada'; sel.appendChild(opt); return;
+  }
+  vs.forEach(function(v){ var opt = document.createElement('option'); opt.value = v.name; opt.textContent = v.name + ' (' + v.lang + ')'; sel.appendChild(opt); });
+  if (vs.some(function(v){ return v.name === previous; })) sel.value = previous;
+}
+if (window.speechSynthesis) { speechSynthesis.onvoiceschanged = voices; voices(); }
+
+// ─── LOOK / ACCESORIOS ────────────────────────────────────────────────────
+function applyLook() {
+  app.style.setProperty('--hue', q('#hue').value + 'deg');
+  q('#accg').innerHTML = ACC_SVG[q('#acc').value] || '';
+}
+
+// ─── SETTINGS PERSISTENCE ─────────────────────────────────────────────────
+var IDS = ['wake','barge','sil','lang','speed','vol','cont','snd','pers','pitch','name','hue','acc'];
+function val(id) { var e = q('#' + id); return e.type === 'checkbox' ? e.checked : e.value; }
+try {
+  var sv = JSON.parse(localStorage.getItem('cfg') || '{}');
+  IDS.forEach(function(id) {
+    if (id in sv) {
+      var e = q('#' + id);
+      if (e.type === 'checkbox') e.checked = sv[id];
+      else e.value = sv[id];
+    }
+  });
+  voices();
+} catch(e) {}
+applyLook();
+q('#set').addEventListener('input', applyLook);
+q('#set').addEventListener('change', function() {
+  try {
+    var obj = {};
+    IDS.forEach(function(id){ obj[id] = val(id); });
+    localStorage.setItem('cfg', JSON.stringify(obj));
+  } catch(e) {}
+});
+
+// ─── CONFIGURACIÓN DE IA EXTERNA SEGURA ──────────────────────────────────
+try { q('#aiendpoint').value = localStorage.getItem('au_ai_endpoint') || ''; } catch(e) {}
+async function testAIEndpoint() {
+  var endpoint = (q('#aiendpoint').value || '').trim().replace(/\/+$/, '');
+  var status = q('#aistatus');
+  if (!endpoint) {
+    status.textContent = 'IA real: falta configurar la URL HTTPS del backend. El núcleo local sigue activo.';
+    try { localStorage.removeItem('au_ai_endpoint'); } catch(e) {}
+    return;
+  }
+  if (!/^https:\/\//i.test(endpoint)) {
+    status.textContent = 'Usa una URL HTTPS de tu backend. No introduzcas una clave secreta aquí.';
+    return;
+  }
+  try { localStorage.setItem('au_ai_endpoint', endpoint); } catch(e) {}
+  status.textContent = 'Comprobando conexión…';
+  try {
+    var healthUrl = endpoint.replace(/\/api\/chat\/?$/i, '/health');
+    var r = await fetch(healthUrl, { method: 'GET' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    if (data && data.ok) {
+      status.textContent = 'Conexión con el backend correcta. La IA responderá al enviar un mensaje.';
+    } else {
+      status.textContent = 'El servidor respondió, pero no confirmó su estado. Prueba enviar un mensaje.';
+    }
+  } catch (e) {
+    status.textContent = 'No pude verificar el backend: ' + (e.message || 'error de conexión') + '. Revisa la URL, HTTPS y CORS.';
+  }
+}
+q('#aitest').addEventListener('click', testAIEndpoint);
+q('#aiendpoint').addEventListener('change', function() {
+  var endpoint = (q('#aiendpoint').value || '').trim();
+  if (endpoint) {
+    try { localStorage.setItem('au_ai_endpoint', endpoint); } catch(e) {}
+  }
+});
+
+// ─── HISTORY LOAD ─────────────────────────────────────────────────────────
+try {
+  history = JSON.parse(localStorage.getItem('hist') || '[]');
+  if (!Array.isArray(history)) history = [];
+  history = history.filter(function(m){ return m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'); }).slice(-40);
+  history.forEach(function(m){ addMsg(m.role === 'user' ? 'you' : 'bot', m.content); });
+  for (var hi = history.length - 1; hi >= 0; hi--) {
+    if (!lastAnswerText && history[hi].role === 'assistant') lastAnswerText = history[hi].content;
+    if (!lastUserText && history[hi].role === 'user') lastUserText = history[hi].content;
+    if (lastAnswerText && lastUserText) break;
+  }
+  if (!lastAnswerText) q('#replytools').hidden = true;
+} catch(e) { history = []; }
+q('#silv').textContent = q('#sil').value;
+q('#sil').addEventListener('input', function(){ q('#silv').textContent = q('#sil').value; });
+window.addEventListener('online', function(){
+  q('#replyfeedback').textContent = 'Conexión restaurada. El núcleo local sigue disponible.';
+});
+window.addEventListener('offline', function(){
+  q('#replyfeedback').textContent = 'Sin conexión: las respuestas integradas siguen funcionando localmente.';
+});
+
+// ─── CHIPS ────────────────────────────────────────────────────────────────
+q('#chips').innerHTML = CHIPS.map(function(c){ return '<button>' + c + '</button>'; }).join('');
+q('#chips').onclick = function(e) {
+  var b = e.target.closest('button');
+  if (b) sendText(b.textContent);
+};
+
+// ─── POINTER EYES ─────────────────────────────────────────────────────────
+addEventListener('pointermove', function(e) {
+  SLEEP.wake();
+  if (appState !== 'idle') return;
+  var r = q('.avatar').getBoundingClientRect();
+  var dx = e.clientX - r.left - r.width / 2;
+  var dy = e.clientY - r.top - r.height / 2;
+  var d = Math.sqrt(dx * dx + dy * dy) || 1;
+  var k = Math.min(8, d / 30);
+  q('.pupils').style.transform = 'translate(' + (dx / d * k) + 'px,' + (dy / d * k) + 'px)';
+});
+
+// ─── KEYBOARD ─────────────────────────────────────────────────────────────
+addEventListener('keydown', function(e) {
+  if (e.target.matches('input,select,button,textarea')) return;
+  if (e.code === 'Space') { e.preventDefault(); toggle(); }
+  if (e.key === 'Escape') stop();
+});
+
+// ─── COMPOSITOR DE MENSAJES (VERSIÓN V9) ───────────────────────────
+var composer = q('#f');
+var txtBox = q('#txt');
+var lastUserText = '';
+var lastAnswerText = '';
+function resizeComposer() {
+  if (!txtBox) return;
+  txtBox.style.height = 'auto';
+  txtBox.style.height = Math.min(txtBox.scrollHeight, 112) + 'px';
+}
+function submitComposer() {
+  if (!txtBox) return;
+  var message = txtBox.value.trim();
+  if (!message) { txtBox.focus(); return; }
+  txtBox.value = '';
+  resizeComposer();
+  q('#replyfeedback').textContent = '';
+  sendText(message);
+  txtBox.focus();
+}
+// OBLIGATORIO: evita la recarga nativa del formulario y ejecuta el motor local.
+composer.addEventListener('submit', function(event) {
+  event.preventDefault();
+  submitComposer();
+});
+txtBox.addEventListener('keydown', function(event) {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    if (composer.requestSubmit) composer.requestSubmit(); else submitComposer();
+  }
+});
+txtBox.addEventListener('input', resizeComposer);
+txtBox.addEventListener('focus', function(){ document.body.classList.add('input-active'); });
+txtBox.addEventListener('blur', function(){ document.body.classList.remove('input-active'); });
+resizeComposer();
+q('#copyreply').addEventListener('click', function() {
+  if (!lastAnswerText) return;
+  var fallbackCopy = function() {
+    var tmp = document.createElement('textarea'); tmp.value = lastAnswerText;
+    tmp.style.position = 'fixed'; tmp.style.opacity = '0'; document.body.appendChild(tmp);
+    tmp.select(); var ok = false;
+    try { ok = document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(tmp);
+    q('#replyfeedback').textContent = ok ? 'Respuesta copiada.' : 'No se pudo copiar en este navegador.';
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(lastAnswerText).then(function(){ q('#replyfeedback').textContent = 'Respuesta copiada.'; }).catch(fallbackCopy);
+  } else fallbackCopy();
+});
+q('#retryreply').addEventListener('click', function() {
+  if (lastUserText) sendText(lastUserText);
+});
+
+// ─── WIRING BOTONES ───────────────────────────────────────────────────────
+q('#mic').type = 'button';
+q('#mic').onclick = function(ev) { if (ev) { ev.preventDefault(); ev.stopPropagation(); } toggle(); };
+q('#mic').addEventListener('keydown', function(ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(); } });
+q('#char').onclick = function(e) { if (e.target.closest('[data-ear]')) ear(); else toggle(); };
+q('#stop').onclick = stop;
+
+q('#allow').onclick = function() {
+  MIC.ensurePerm().then(function() {
+    q('#allow').textContent = '✅ Permiso de micro concedido';
+    setStatus('idle');
+  }).catch(function(e) {
+    setStatus('error', friendly(e.message));
+  });
+};
+if (navigator.permissions) {
+  navigator.permissions.query({ name: 'microphone' }).then(function(p) {
+    var u = function(){ if (p.state === 'granted') q('#allow').textContent = '✅ Permiso de micro concedido'; };
+    u(); p.onchange = u;
+  }).catch(function() {});
+}
+
+q('#gear').onclick = function() { q('#mem').hidden = true; q('#set').hidden = !q('#set').hidden; };
+q('#memb').onclick = function() { q('#set').hidden = true; q('#mem').hidden = !q('#mem').hidden; };
+q('#lang').onchange = function(){ voices(); try { var o = {}; IDS.forEach(function(id){ o[id] = val(id); }); localStorage.setItem('cfg', JSON.stringify(o)); } catch(e) {} };
+q('#wake').onchange = function() {
+  if (cfg().wake) { if (appState === 'idle') STT.startWake(); }
+  else STT.stopWake();
+  badge();
+};
+q('#testvoice').onclick = function() {
+  var t = cfg().lang === 'en-US' ? ('Hi! I am ' + aName() + ', this is how I sound.') : ('Hola! Soy ' + aName() + ', asi es como sueno.');
+  TTS.speak(t);
+};
+q('#clr').onclick = function() {
+  stop(); history = []; summary = ''; lastUserText = ''; lastAnswerText = '';
+  try { localStorage.removeItem('sum'); } catch(e) {}
+  saveHistory(); logEl.innerHTML = ''; q('#chips').hidden = false;
+  q('#replytools').hidden = true; q('#replyfeedback').textContent = '';
+};
+q('#exp').onclick = function() {
+  if (!history.length) return;
+  var txt = history.map(function(m){ return (m.role === 'user' ? 'Yo: ' : 'Asistente: ') + m.content; }).join('\n\n');
+  var b = new Blob([txt], { type: 'text/plain' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = 'conversacion.txt'; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1200);
+};
+q('#memf').onsubmit = function(e) { e.preventDefault(); MEM.add(q('#memi').value); q('#memi').value = ''; };
+q('#memclr').onclick = function() {
+  var btn = this;
+  if (btn.dataset.s) {
+    MEM.clear(); btn.textContent = 'Borrar toda la memoria'; delete btn.dataset.s;
+  } else {
+    btn.dataset.s = '1'; btn.textContent = 'Seguro? Pulsa otra vez';
+    setTimeout(function(){ delete btn.dataset.s; btn.textContent = 'Borrar toda la memoria'; }, 3000);
+  }
+};
+q('#dbgtoggle').onclick = function() { q('#dbg').hidden = !q('#dbg').hidden; };
+q('#testtoggle').onclick = function() { q('#testbar').hidden = !q('#testbar').hidden; };
+
+// ─── TEST MODE ────────────────────────────────────────────────────────────
+function testSim(action) {
+  switch(action) {
+    case 'wake':  beep(700,1500); pop('👀'); app.classList.add('wide'); setTimeout(function(){ app.classList.remove('wide'); },900); addMsg('bot','Test wake activo!'); break;
+    case 'listen':  setStatus('listening'); break;
+    case 'process': setStatus('processing'); break;
+    case 'speak':   setStatus('speaking'); TTS.speak('Esta es una prueba de voz de ' + aName() + '.'); break;
+    case 'error':   setStatus('error', 'Error de prueba simulado'); break;
+    case 'sleep':   stop(); setTimeout(function(){ app.classList.add('sleep'); }, 300); break;
+    case 'stop':    stop(); break;
+  }
+}
+
+// Los botones de prueba usan onclick en el HTML, por lo que necesitan un alias global.
+window.testSim = testSim;
+
+// ─── DESCARGA HTML ────────────────────────────────────────────────────────
+// Usa el snapshot capturado al inicio — no depende de fetch ni del DOM en vivo
+q('#dlbtn').onclick = function() {
+  try {
+    var blob = new Blob([_HTML_SNAPSHOT], { type: 'text/html;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'AUCHURUS_ULTRA_V7_2_MIC_FIX.html';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
+  } catch(e) {
+    alert('No se pudo descargar: ' + e.message);
+  }
+};
+
+// ─── STT FALLBACK MSG ─────────────────────────────────────────────────────
+if (!STT_CTOR()) {
+  var warn = document.createElement('p');
+  warn.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#0009;padding:8px 16px;border-radius:10px;font-size:.85rem;z-index:10;max-width:90vw;text-align:center';
+  warn.textContent = 'ℹ️ Tu navegador no soporta reconocimiento de voz. Puedes escribir tu pregunta abajo.';
+  document.body.appendChild(warn);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+MEM.init();
+renderMem();
+setStatus('idle');
+
+addEventListener('beforeunload', function(){ TTS.cancel(); });
+
+})(); // IIFE — sin contaminacion del scope global
+</script>
+</body></html>
